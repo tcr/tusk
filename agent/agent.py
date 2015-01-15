@@ -32,38 +32,42 @@ def vagrant_ssh_config(name):
 
 # Check if a VM exists.
 def vm_exists(a):
-    os.path.exists(os.path.join(path_vms, a, 'Vagrantfile'))
+    return os.path.exists(os.path.join(path_vms, a, 'Vagrantfile'))
 
 # Initialize a new VM.
 def vm_init(name):
     os.mkdir(os.path.join(path_vms, name))
-    shutil.copy(os.path.join(path_root, './Vagrantfile'), os.path.join(path_vms, name, 'Vagrantfile'))
-    shutil.copy(os.path.join(path_root, './private.p12'), os.path.join(path_vms, name, 'private.p12'))
-    return vagrant_up(name)
+    shutil.copy(os.path.join(path_root, './config/Vagrantfile'), os.path.join(path_vms, name, 'Vagrantfile'))
+    shutil.copy(os.path.join(path_root, './config/private.p12'), os.path.join(path_vms, name, 'private.p12'))
 
 # Clean a VM.
 def vm_clean(arg):
-    vagrant_destroy(arg)
     shutil.rmtree(os.path.join(path_vms, arg))
 
 def mp_consumer(inq, outq):
     while True:
-        name = bytes(inq.get()).decode('utf8', 'ignore')
-
-        if vm_exists(name):
-            outq.put({"status": False, "error": "VM already exists."})
+        packet = inq.get()
+        if not isinstance(packet, bytes):
+            outq.put({"status": False, "error": "Bad message.", "retry": False})
             continue
 
-        if vm_init(name):
-            outq.put({"status": False, "error": "Could not initialize VM."})
+        name = bytes(packet).decode('utf8', 'ignore')
+
+        if vm_exists(name):
+            outq.put({"status": False, "error": "VM already exists.", "retry": True})
+            continue
+
+        vm_init(name);
+        if vagrant_up(name):
+            outq.put({"status": False, "error": "Could not initialize VM.", "retry": True})
         else:
             config = vagrant_ssh_config(name)
             if not config:
-                outq.put({"status": False, "error": "Could not retrieve SSH config."})
+                outq.put({"status": False, "error": "Could not retrieve SSH config.", "retry": True})
                 continue
 
             addr = 'tcp://127.0.0.1:44555'
-            outq.put({"status": True, "connection": addr})
+            outq.put({"status": True, "connection": addr, "retry": True})
 
             print('connecting')
             rpc = None
@@ -74,9 +78,13 @@ def mp_consumer(inq, outq):
             except Exception as e:
                 traceback.print_exc()
             finally:
-                if rpc:
-                    rpc.close()
+                try:
+                    if rpc:
+                        rpc.close()
+                except Exception as e:
+                    traceback.print_exc()
 
+        vagrant_destroy(name)
         vm_clean(name)
 
 def mp_clean():

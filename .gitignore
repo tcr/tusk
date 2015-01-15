@@ -3,4 +3,6 @@
 **/*.yaml
 agent/vms
 **/Vagrantfile
-
+**/config
+**/venv
+**/*.cfg

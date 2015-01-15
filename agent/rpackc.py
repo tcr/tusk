@@ -29,6 +29,7 @@ class RPC:
 		self.socket.send(msgpack.packb({'type': 'call', 'target': target, 'data': data}))
 
 	def close (self):
+		self.send_call('exit')
 		self.socket.close()
 
 	def use (self, handler):

@@ -7,33 +7,6 @@ import paramiko
 from rpackc import RPC
 from nanomsg import Socket, PAIR, PUB, NanoMsgAPIError
 
-class SSHRPC(RPC):
-	def __init__(self, kind, addr, sshout):
-		super().__init__(kind, addr)
-
-		config = paramiko.SSHConfig()
-		config.parse(sshout)
-		self.config = config.lookup('default')
-
-		self.cmdid = 0
-
-	def download (self, src, dest):
-		# Copy a file out.
-		result = False
-		size = 0
-		try:
-			sftp = self.ssh.open_sftp()
-			sftp.get(src, dest)
-			sftp.close()
-
-			result = True
-			size = os.path.getsize(dest)
-		except Exception as e:
-			print(e)
-			pass
-
-		return (result, size)
-
 def run_command(ssh, rpc, cmd):
 	rpc.send_call('command_enter', {"id": 0, "cmd": cmd})
 
@@ -81,22 +54,47 @@ def run_command(ssh, rpc, cmd):
 	rpc.send_call('command_exit', {"id": 0, "cmd": cmd, "code": code})
 	return code
 
+
+class SSHRPC(RPC):
+	def __init__(self, kind, addr, sshout):
+		super().__init__(kind, addr)
+
+		config = paramiko.SSHConfig()
+		config.parse(sshout)
+		self.config = config.lookup('default')
+
+		self.cmdid = 0
+
+	def download (self, src, dest):
+		# Copy a file out.
+		result = False
+		size = 0
+		try:
+			sftp = self.ssh.open_sftp()
+			sftp.get(src, dest)
+			sftp.close()
+
+			result = True
+			size = os.path.getsize(dest)
+		except Exception as e:
+			print(e)
+			pass
+
+		return (result, size)
+
 class Handler:
 	@staticmethod
 	def start(rpc, *args):
-		# Build SSH server
+		# Create SSH client.
 		rpc.ssh = paramiko.SSHClient()
 		def ssh_cleanup():
 			rpc.ssh.close();
 		atexit.register(ssh_cleanup);
 
-		# Connect
+		# Connect SSH.
 		rpc.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+		rpc.ssh.connect(rpc.config['hostname'], username=rpc.config['user'], key_filename=rpc.config['identityfile'])
 		# rpc.ssh.load_system_host_keys()
-		# rpc.ssh.connect(hostname, port, username, password)
-
-		o = rpc.config
-		rpc.ssh.connect(o['hostname'], username=o['user'], key_filename=o['identityfile'])
 
 		rpc.send_call('start')
 
@@ -122,7 +120,7 @@ class Handler:
 		(result, size) = rpc.download(bytes(src).decode('utf8', 'ignore'), path)
 		if result:
 			rpc.send_call('download_ready', {
-				"available": False,
+				"available": True,
 				"size": size,
 				"path": path,
 			})
@@ -134,4 +132,4 @@ class Handler:
 	@staticmethod
 	def exit(rpc, *args):
 		rpc.alive = False
-		rpc.send_call('exit', {})
+		rpc.send_call('exit')
