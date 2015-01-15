@@ -1,0 +1,6 @@
+**/*.p12
+**/__pycache__
+**/*.yaml
+agent/vms
+**/Vagrantfile
+
