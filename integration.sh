@@ -1,6 +1,6 @@
 #!/bin/bash
 
-trap 'kill $(jobs -p)' EXIT
+trap '[ -n "$(jobs -pr)" ] && kill $(jobs -pr)' INT QUIT TERM EXIT
 
 cd agent
 source venv/bin/activate
@@ -12,10 +12,15 @@ SUCCESS=$?
 
 # sleep 5
 
+isalive() {
+	kill -0 "$1" >/dev/null 2>&1
+	return $?
+}
+
 echo $AGENT_PID
 
-kill "$AGENT_PID"
-while kill -0 "$AGENT_PID"; do
+kill "$AGENT_PID" >/dev/null 2>&1
+while isalive "$AGENT_PID"; do
     sleep 0.5
 done
 

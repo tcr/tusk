@@ -6,6 +6,8 @@ var path = require('path');
 var fs = require('fs');
 var assert = require('assert');
 var remote = require('./remote');
+var expect = require('chai').expect;
+require('mocha-steps');
 
 function collect (stream, next) {
   var bufs = [];
@@ -41,25 +43,40 @@ function parsetar (result, next) {
   }
 }
 
+// Tests
+
 describe('remote', function(){
   this.timeout(5*60*1000);
 
-  it('should run a linux server', function (done) {
+  step('should run uname on linux', function (done) {
     remote.requestServer('test', function (err, address) {
-      if (err) { return console.error('Invalid request'); }
-      remote.build(address, function (err, result) {
-        console.log('exit', err);
-        console.log(result);
-        
-        assert(result && result.available);
-        parsetar(result, function (err, uname) {
-          console.log(uname);
+      expect(err).to.not.be.ok();
 
-          assert.equal(err, null);
-          assert(uname && uname.match(/Linux/i));
+      remote.build(address, 'test', function (err, result) {
+        expect(err).to.equal(0);
+        expect(result).to.have.property('available').that.is.ok();
+        
+        parsetar(result, function (err, uname) {
+          expect(err).to.not.be.ok();
+          expect(uname)
+            .to.be.a('string')
+            .and.to.match(/Linux/i);
+
           done();
         })
       })
     });
   });
+
+  step('should fail on linux', function (done) {
+    remote.requestServer('test-fail', function (err, address) {
+      expect(err).to.not.be.ok();
+
+      remote.build(address, 'test-fail', function (err, result) {
+        expect(err).to.equal(42);
+
+        done();
+      })
+    });
+  })
 });

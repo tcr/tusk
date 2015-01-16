@@ -1,3 +1,4 @@
+var path = require('path');
 var yaml = require('js-yaml');
 var fs   = require('fs');
 var cp = require('child_process');
@@ -21,11 +22,11 @@ function requestServer (name, onallocation) {
   socket.send(msgpack.pack(name));
 }
 
-function build (addr, onresult) {
+function build (addr, plan, onresult) {
   // Get document, or throw exception on error
   var steps;
   try {
-    steps = yaml.safeLoad(fs.readFileSync('./test.yaml', 'utf8'));
+    steps = yaml.safeLoad(fs.readFileSync(path.join('./', plan + '.yaml'), 'utf8'));
     console.log(steps);
   } catch (e) {
     console.log(e);
