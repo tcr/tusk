@@ -18,6 +18,8 @@ import ssh
 def handler(signum, frame):
     global alive
     print('^C shutting down python agent')
+    if alive == False:
+        sys.exit()
     alive = False
 alive = True
 signal.signal(signal.SIGTERM, handler)

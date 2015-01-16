@@ -13,7 +13,7 @@ from nanomsg import Socket, PAIR, PUB, NanoMsgAPIError
 
 
 def run_command(ssh, rpc, cmd):
-    rpc.send_call('command_enter', {"id": 0, "cmd": cmd})
+    rpc.send('command_enter', {"id": 0, "cmd": cmd})
 
     chan = rpc.ssh.get_transport().open_session()
     chan.setblocking(0)
@@ -40,7 +40,7 @@ def run_command(ssh, rpc, cmd):
                 stdout_done = len(res) == 0
                 # sys.stderr.write(res)
                 if len(res):
-                    rpc.send_stream('out', res)
+                    rpc.send('out', res)
         except:
             pass
 
@@ -51,12 +51,12 @@ def run_command(ssh, rpc, cmd):
                 # sys.stdout.write(res)
                 # s2.send(res)
                 if len(res):
-                    rpc.send_stream('err', res)
+                    rpc.send('err', res)
         except:
             pass
 
     code = chan.recv_exit_status()
-    rpc.send_call('command_exit', {"id": 0, "cmd": cmd, "code": code})
+    rpc.send('command_exit', {"id": 0, "cmd": cmd, "code": code})
     return code
 
 
@@ -106,7 +106,7 @@ class Handler:
                         'user'], key_filename=rpc.config['identityfile'])
         # rpc.ssh.load_system_host_keys()
 
-        rpc.send_call('start')
+        rpc.send('start')
 
     @staticmethod
     def process_start(rpc, cmds, *args):
@@ -122,7 +122,7 @@ class Handler:
             if code != 0:
                 break
 
-        rpc.send_call('process_exit', {"id": cmdid, "code": code})
+        rpc.send('process_exit', {"id": cmdid, "code": code})
 
     @staticmethod
     def download(rpc, src):
@@ -130,17 +130,17 @@ class Handler:
         (result, size) = rpc.download(
             bytes(src).decode('utf8', 'ignore'), path)
         if result:
-            rpc.send_call('download_ready', {
+            rpc.send('download_ready', {
                 "available": True,
                 "size": size,
                 "path": path,
             })
         else:
-            rpc.send_call('download_ready', {
+            rpc.send('download_ready', {
                 "available": False,
             })
 
     @staticmethod
     def exit(rpc, *args):
         rpc.alive = False
-        rpc.send_call('exit')
+        rpc.send('exit')

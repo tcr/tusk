@@ -25,16 +25,11 @@ class RPC:
 
         self.alive = False
 
-    def send_stream(self, target, data=None):
-        self.socket.send(
-            msgpack.packb({'type': 'stream', 'target': target, 'data': data}))
-
-    def send_call(self, target, data=None):
-        self.socket.send(
-            msgpack.packb({'type': 'call', 'target': target, 'data': data}))
+    def send(self, target, data=None):
+        self.socket.send(msgpack.packb([target, data]))
 
     def close(self):
-        self.send_call('exit')
+        self.send('exit')
         self.socket.close()
 
     def use(self, handler):
@@ -48,15 +43,16 @@ class RPC:
                 incoming = self.socket.recv()
                 pkt = msgpack.unpackb(incoming)
 
-                if pkt.get(b'type') == b'call' and self.handler and pkt.get(b'target'):
-                    if getattr(self.handler, pkt.get(b'target').decode('utf-8', 'ignore')):
-                        getattr(self.handler, pkt.get(b'target').decode(
-                            'utf-8', 'ignore'))(self, pkt.get(b'data', None))
+                if isinstance(pkt, list) and len(pkt) > 0 and self.handler:
+                    target = bytes(pkt[0] or '').decode('utf-8', 'ignore')
+                    data = pkt[1] if len(pkt) > 1 else None
+                    if getattr(self.handler, target):
+                        getattr(self.handler, target)(self, data)
                 else:
-                    print('Could not handle packet:', pkt)
+                    print('Invalid msgpack buffer received:', pkt, file=sys.stderr)
         except NanoMsgAPIError as e:
             # Timeout
-            print('Build aborted:', e)
+            print('RPC error:', e)
             success = False
 
         return success

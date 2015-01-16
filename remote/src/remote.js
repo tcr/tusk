@@ -42,7 +42,7 @@ function build (addr, plan, onresult) {
   var download = null, exitcode = 0;
   rpc.use({
     'start': function (rpc) {
-      rpc.sendCall('process_start', steps);
+      rpc.send('process_start', steps);
     },
     'exit': function (rpc, result) {
       console.log('exit');
@@ -58,18 +58,18 @@ function build (addr, plan, onresult) {
     'process_exit': function (rpc, ret) {
       exitcode = ret.code;
       if (ret.code) {
-        rpc.sendCall('exit');
+        rpc.send('exit');
       } else {
-        rpc.sendCall('download', '/result/result.tar.gz');
+        rpc.send('download', '/result/result.tar.gz');
       }
     },
     'download_ready': function (rpc, result) {
       download = result;
-      rpc.sendCall('exit');
+      rpc.send('exit');
     }
   });
 
-  rpc.sendCall('start');
+  rpc.send('start');
 }
 
 exports.requestServer = requestServer;

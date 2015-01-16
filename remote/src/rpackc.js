@@ -8,52 +8,37 @@
 var stream = require('stream');
 var nano = require('nanomsg');
 var msgpack = require('msgpack');
+var events = require('events');
+var util = require('util');
 
 function RPC (type, addr) {
   this.socket = nano.socket(type);
   this.socket.connect(addr);
-  this.socket.on('message', this.onMessage.bind(this));
+  this.socket.on('message', function (buf) {
+    try {
+      this.emit('message', msgpack.unpack(buf));
+    } catch (e) {
+      console.error('Invalid msgpack buffer received: ' + e.toString());
+    }
+  }.bind(this));
+
+  this.on('message', function (buf) {
+    if (buf[0]) {
+      this.call(buf[0], buf[1]);
+    }
+  })
 
   this.streams = {};
 }
 
-RPC.prototype.onMessage = function (buf) {
-  try {
-      var buf = msgpack.unpack(buf);
-      if (buf) {
-      switch (buf['type']) {
-        case 'stream': {
-          this.getStream(buf['target']).push(buf.data);
-        }; break;
-        case 'call': {
-          this.call(buf['target'], buf['data']);
-        } break;
-      }
-    }
-    } catch (e) {
-      console.error(e);
-      process.exit(1);
-    }
-};
+util.inherits(RPC, events.EventEmitter);
 
 RPC.prototype.close = function () {
   this.socket.close();
 };
 
-RPC.prototype.sendCall = function (target, data) {
-  this.socket.send(msgpack.pack({
-    'type': 'call',
-    'target': String(target),
-    'data': data,
-  }))
-}
-
-RPC.prototype.sendStream = function (target, data) {
-  this.socket.send(msgpack.pack({
-    'type': 'stream',
-    'target': String(target),
-    'data': data,
-  }))
+RPC.prototype.send = function (target, data) {
+  this.socket.send(msgpack.pack([String(target), data]));
 }
 
 RPC.prototype.getStream = function (target) {
@@ -61,6 +46,12 @@ RPC.prototype.getStream = function (target) {
   if (!streams[target]) {
     streams[target] = new stream.Readable();
     streams[target]._read = function () { };
+
+    this.on('message', function (buf) {
+      if (buf.target == target) {
+        streams[target].push(Buffer.isBuffer(buf.data) ? buf.data : String(buf.data));
+      }
+    })
   }
   return streams[target]
 }
@@ -70,7 +61,9 @@ RPC.prototype.use = function (handler) {
 }
 
 RPC.prototype.call = function (target, data) {
-  this.handler && this.handler[target] && this.handler[target].call(this.handler, this, data);
+  if (Object.prototype.hasOwnProperty.call(this.handler || {}, target)) {
+    return this.handler[target].call(this.handler, this, data);
+  }
 }
 
 function connect (type, address) {
