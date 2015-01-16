@@ -1,11 +1,18 @@
-import atexit
-import shutil, os
-import msgpack, time
-import subprocess, traceback
+import atexit, shutil, os, time, sys, io, subprocess, traceback, signal
+import msgpack
 from nanomsg import Socket, PAIR, PUB, REP
-from multiprocessing import Process, Queue, Pool
+from multiprocessing import Process, Queue, Pool, Value
 import ssh
-import io
+
+alive = Value('d', 1)
+def nop():
+    pass
+on_kill = nop
+def handler(signum, frame):
+    print('did_kill')
+    alive.value = 0
+    on_kill()
+signal.signal(signal.SIGTERM, handler)
 
 path_root = os.path.dirname(os.path.realpath(__file__))
 path_vms = os.path.join(path_root, 'vms')
@@ -42,10 +49,12 @@ def vm_init(name):
 
 # Clean a VM.
 def vm_clean(arg):
+    print('well', arg)
     shutil.rmtree(os.path.join(path_vms, arg))
+    print('ok')
 
-def mp_consumer(inq, outq):
-    while True:
+def mp_consumer(alive, inq, outq):
+    while alive.value:
         packet = inq.get()
         if not isinstance(packet, bytes):
             outq.put({"status": False, "error": "Bad message.", "retry": False})
@@ -81,20 +90,27 @@ def mp_consumer(inq, outq):
                 try:
                     if rpc:
                         rpc.close()
-                except Exception as e:
+                except:
                     traceback.print_exc()
 
         vagrant_destroy(name)
+        print('onward')
         vm_clean(name)
 
+    print('exiting consumer thread')
+
 def mp_clean():
+    print('Cleaning up...')
     clean = [f for f in os.listdir(path_vms) if os.path.isdir(os.path.join(path_vms, f))]
-    with Pool(processes=4) as pool:
-        pool.map(vm_clean, clean)
+    if len(clean):
+        with Pool(processes=4) as pool:
+            print('Cleaning', clean)
+            pool.map(vm_clean, clean)
     os.rmdir(path_vms)
     os.mkdir(path_vms)
+    print('done cleaning.')
 
-def mp_listener(inq):
+def mp_listener(alive, inq):
     socket = Socket(REP)
     socket.bind('tcp://*:5858')
     def rep_cleanup():
@@ -102,24 +118,31 @@ def mp_listener(inq):
     atexit.register(rep_cleanup);
 
     print('Listening')
-    while True:
+    while alive.value:
         inq.put(msgpack.unpackb(socket.recv()))
         print('Bringing up machine')
         socket.send(msgpack.packb(outq.get()))
+    print('exiting listener thread')
 
 if __name__ == '__main__':
-    print('Cleaning up...')
     mp_clean()
     atexit.register(mp_clean)
 
     inq = Queue()
     outq = Queue()    
 
-    pl = Process(target=mp_listener, args=(inq,))
-    pl.start()
+    pl = Process(target=mp_listener, args=(alive, inq,))
+    pc = Process(target=mp_consumer, args=(alive, inq, outq))
 
-    pc = Process(target=mp_consumer, args=(inq, outq))
+    pl.start()
     pc.start()
 
+    def rep_cleanup():
+        pl.terminate()
+    on_kill = rep_cleanup
+
+    print('joining...')
     pl.join()
+    print('joined listenre...')
     pc.join()
+    print('joined consumer...')

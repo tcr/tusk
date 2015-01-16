@@ -1,3 +1,4 @@
+etc
 **/*.p12
 **/__pycache__
 **/*.yaml
