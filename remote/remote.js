@@ -1,14 +1,17 @@
-var yaml = require('js-yaml');
 var fs   = require('fs');
-var cp = require('child_process');
 var msgpack = require('msgpack')
-var nano = require('nanomsg'), nn = nano._bindings;
+var nano = require('nanomsg');
 
 var rpackc = require('./rpackc');
 
+function setResendInterval (socket, timeout) {
+  var nn = nano._bindings;
+  socket.setsockopt(nn.NN_REQ, nn.NN_REQ_RESEND_IVL, timeout);
+}
+
 function requestServer (name, onallocation) {
   var socket = nano.socket('req');
-  socket.setsockopt(nn.NN_REQ, nn.NN_REQ_RESEND_IVL, 5*60*1000);
+  setResendInterval(socket, 5*60*1000);
 
   socket.on('message', function (data) {
     var result = msgpack.unpack(data);
@@ -21,16 +24,7 @@ function requestServer (name, onallocation) {
   socket.send(msgpack.pack(name));
 }
 
-function build (addr, onresult) {
-  // Get document, or throw exception on error
-  var steps;
-  try {
-    steps = yaml.safeLoad(fs.readFileSync('./test.yaml', 'utf8'));
-    console.log(steps);
-  } catch (e) {
-    console.log(e);
-  }
-
+function build (addr, steps, onresult) {
   var rpc = rpackc.connect('pair', addr);
   rpc.getStream('out').pipe(process.stdout);
   rpc.getStream('err').pipe(process.stderr);
@@ -70,17 +64,3 @@ function build (addr, onresult) {
 
 exports.requestServer = requestServer;
 exports.build = build;
-
-if (require.main == module) {
-  if (!process.argv[2]) {
-    console.error('Usage: runner openwrt');
-    process.exit(1);
-  }
-
-  requestServer(process.argv[2], function (err, address) {
-    build(address, function (err, result) {
-      console.log('exit', err);
-      console.log(result);
-    })
-  });
-}

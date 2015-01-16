@@ -66,7 +66,7 @@ def mp_consumer(inq, outq):
                 outq.put({"status": False, "error": "Could not retrieve SSH config.", "retry": True})
                 continue
 
-            addr = 'tcp://127.0.0.1:44555'
+            addr = 'tcp://127.0.0.1:44599'
             outq.put({"status": True, "connection": addr, "retry": True})
 
             print('connecting')
@@ -81,14 +81,16 @@ def mp_consumer(inq, outq):
                 try:
                     if rpc:
                         rpc.close()
-                except Exception as e:
+                except:
                     traceback.print_exc()
 
         vagrant_destroy(name)
         vm_clean(name)
 
 def mp_clean():
+    print('Cleaning up...')
     clean = [f for f in os.listdir(path_vms) if os.path.isdir(os.path.join(path_vms, f))]
+    print(clean)
     with Pool(processes=4) as pool:
         pool.map(vm_clean, clean)
     os.rmdir(path_vms)
@@ -108,7 +110,6 @@ def mp_listener(inq):
         socket.send(msgpack.packb(outq.get()))
 
 if __name__ == '__main__':
-    print('Cleaning up...')
     mp_clean()
     atexit.register(mp_clean)
 
