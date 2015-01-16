@@ -5,7 +5,10 @@ var zlib = require('zlib');
 var path = require('path');
 var fs = require('fs');
 var assert = require('assert');
-var remote = require('./remote');
+var expect = require('chai').expect;
+
+var remote = require('../remote');
+var plan = require('../plan');
 
 function collect (stream, next) {
   var bufs = [];
@@ -41,22 +44,39 @@ function parsetar (result, next) {
   }
 }
 
-describe('remote', function(){
+describe('local', function () {
+  it('should retrieve a test', function () {
+    expect(plan.getPlan('uname')).to.be.ok();
+  });
+
+  it('should serialize messages', function (done) {
+    done()
+  });
+});
+
+describe('integration', function () {
   this.timeout(5*60*1000);
 
   it('should run a linux server', function (done) {
+    var test = plan.getPlan('uname');
+    expect(plan.getPlan('uname')).to.be.ok();
+
     remote.requestServer('test', function (err, address) {
-      if (err) { return console.error('Invalid request'); }
-      remote.build(address, function (err, result) {
+      expect(err).to.not.be.ok();
+
+      remote.build(address, test, function (err, result) {
+        expect(err).to.not.be.ok();
+
         console.log('exit', err);
         console.log(result);
         
         assert(result && result.available);
         parsetar(result, function (err, uname) {
-          console.log(uname);
+          expect(err).to.not.be.ok();
 
-          assert.equal(err, null);
-          assert(uname && uname.match(/Linux/i));
+          console.log(uname);
+          expect(uname).to.be.a.string();
+          expect(uname).to.match(/Linux/i);
           done();
         })
       })
