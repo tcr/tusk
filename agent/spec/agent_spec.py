@@ -1,7 +1,7 @@
 from expects import *
 
 import sys
-sys.path.append('.')
+sys.path.append('../src')
 import agent
 
 with description('agent'):

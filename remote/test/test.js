@@ -5,9 +5,10 @@ var zlib = require('zlib');
 var path = require('path');
 var fs = require('fs');
 var assert = require('assert');
-var remote = require('./remote');
 var expect = require('chai').expect;
 require('mocha-steps');
+
+var remote = require('../src/remote');
 
 function collect (stream, next) {
   var bufs = [];

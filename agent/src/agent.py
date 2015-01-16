@@ -1,24 +1,35 @@
-import atexit, shutil, os, time, sys, io
-import subprocess, traceback, signal, queue
+import atexit
+import shutil
+import os
+import time
+import sys
+import io
+import subprocess
+import traceback
+import signal
+import queue
 import msgpack
 from nanomsg import Socket, PAIR, PUB, REP
 from threading import Thread, Lock
 from concurrent.futures import ThreadPoolExecutor
-import _thread
 import ssh
 
-alive = True
+
 def handler(signum, frame):
     global alive
-    print('^C')
+    print('^C shutting down python agent')
     alive = False
+alive = True
 signal.signal(signal.SIGTERM, handler)
 
-path_root = os.path.dirname(os.path.realpath(__file__))
+path_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 path_vms = os.path.join(path_root, 'vms')
 
-# Call vagrant destroy. Allow retry in case butchered processes aborted.
+
 def vagrant_destroy(a):
+    """
+    Call vagrant destroy. Allow retry in case butchered processes aborted.
+    """
     print('exec: vagrant destroy', a)
     retry = 5
     while subprocess.call(['vagrant', 'destroy', '-f'], cwd=os.path.join(path_vms, a)) and retry > 0:
@@ -26,51 +37,68 @@ def vagrant_destroy(a):
         retry = retry - 1
     print('done: vagrant destroy')
 
+
 def vagrant_up(a):
     print('exec: vagrant up', a)
-    ret = subprocess.call(['vagrant', 'up', '--provider=google'], cwd=os.path.join(path_vms, a))
+    ret = subprocess.call(
+        ['vagrant', 'up', '--provider=google'], cwd=os.path.join(path_vms, a))
     print('done: vagrant up')
     return ret
 
+
 def vagrant_ssh_config(name):
     cmd = "vagrant ssh-config"
-    (stdout, stderr) = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, universal_newlines=True, cwd=os.path.join(path_vms, name)).communicate()
+    p = subprocess.Popen(cmd.split(),
+                         stdout=subprocess.PIPE,
+                         universal_newlines=True,
+                         cwd=os.path.join(path_vms, name))
+    (stdout, stderr) = p.communicate()
     return stdout
 
-# Check if a VM exists.
+
 def vm_exists(a):
+    """Check if a VM exists."""
     return os.path.exists(os.path.join(path_vms, a, 'Vagrantfile'))
 
-# Initialize a new VM.
-def vm_init(name):
-    os.mkdir(os.path.join(path_vms, name))
-    shutil.copy(os.path.join(path_root, './config/Vagrantfile'), os.path.join(path_vms, name, 'Vagrantfile'))
-    shutil.copy(os.path.join(path_root, './config/private.p12'), os.path.join(path_vms, name, 'private.p12'))
 
-# Clean a VM.
+def vm_init(name):
+    """Initialize a new VM."""
+    os.mkdir(os.path.join(path_vms, name))
+    shutil.copy(os.path.join(path_root, './config/Vagrantfile'),
+                os.path.join(path_vms, name, 'Vagrantfile'))
+    shutil.copy(os.path.join(path_root, './config/private.p12'),
+                os.path.join(path_vms, name, 'private.p12'))
+
+
 def vm_clean(arg):
+    """Clean a VM."""
     shutil.rmtree(os.path.join(path_vms, arg))
+
 
 def mp_consumer(inq, outq):
     while alive:
         packet = inq.get()
         if not isinstance(packet, bytes):
-            outq.put({"status": False, "error": "Bad message.", "retry": False})
+            outq.put(
+                {"status": False, "error": "Bad message.", "retry": False})
             continue
 
         name = bytes(packet).decode('utf8', 'ignore')
 
         if vm_exists(name):
-            outq.put({"status": False, "error": "VM already exists.", "retry": True})
+            outq.put(
+                {"status": False, "error": "VM already exists.", "retry": True})
             continue
 
-        vm_init(name);
+        vm_init(name)
         if vagrant_up(name):
-            outq.put({"status": False, "error": "Could not initialize VM.", "retry": True})
+            outq.put(
+                {"status": False, "error": "Could not initialize VM.", "retry": True})
         else:
             config = vagrant_ssh_config(name)
             if not config:
-                outq.put({"status": False, "error": "Could not retrieve SSH config.", "retry": True})
+                outq.put(
+                    {"status": False, "error": "Could not retrieve SSH config.", "retry": True})
                 continue
 
             addr = 'tcp://127.0.0.1:44555'
@@ -96,9 +124,11 @@ def mp_consumer(inq, outq):
 
     print('exiting consumer thread')
 
+
 def mp_clean():
     print('Cleaning up...')
-    clean = [f for f in os.listdir(path_vms) if os.path.isdir(os.path.join(path_vms, f))]
+    clean = [f for f in os.listdir(
+        path_vms) if os.path.isdir(os.path.join(path_vms, f))]
     if len(clean):
         with ThreadPoolExecutor(max_workers=4) as pool:
             print('Cleaning', clean)
@@ -106,6 +136,7 @@ def mp_clean():
     os.rmdir(path_vms)
     os.mkdir(path_vms)
     print('done cleaning.')
+
 
 def mp_listener(inq):
     socket = Socket(REP)
