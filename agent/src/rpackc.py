@@ -1,9 +1,8 @@
 # MessagePack + Nanomsg + RPC
-# Stupid-simple RPC. Messages are either
-#  - call: Invoke a receiving function with arguments
-#  - stream: Append data to a stream (if it exists)
-# State-machine like behavior can be produced from switching
-# the set of handler functions.
+# Stupid-simple RPC. Messages are [target, data] tuples.
+# A handler can recevie calls by target; streams can be created
+# to collect and replay data from a target. State-machine like
+# behavior can emerge from switching the handler set.
 
 import atexit
 import msgpack
@@ -11,6 +10,7 @@ from nanomsg import Socket, PAIR, PUB, NanoMsgAPIError
 
 
 class RPC:
+    """Simple RPC class."""
 
     def __init__(self, kind, addr):
         self.socket = Socket(kind)
@@ -49,7 +49,7 @@ class RPC:
                     if getattr(self.handler, target):
                         getattr(self.handler, target)(self, data)
                 else:
-                    print('Invalid msgpack buffer received:', pkt, file=sys.stderr)
+                    print('Invalid msgpack server buffer received:', pkt, file=sys.stderr)
         except NanoMsgAPIError as e:
             # Timeout
             print('RPC error:', e)

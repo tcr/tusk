@@ -101,10 +101,15 @@ class Handler:
         atexit.register(ssh_cleanup)
 
         # Connect SSH.
+        rpc.ssh.load_system_host_keys()
         rpc.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        rpc.ssh.connect(rpc.config['hostname'], username=rpc.config[
-                        'user'], key_filename=rpc.config['identityfile'])
-        # rpc.ssh.load_system_host_keys()
+
+        rpc.ssh.connect(rpc.config['hostname'],
+                username = rpc.config['user'],
+                port = int(rpc.config['port']) if rpc.config.get('port') else None,
+                key_filename = rpc.config['identityfile'][0]
+                    if isinstance(rpc.config['identityfile'], list)
+                    else rpc.config['identityfile'])
 
         rpc.send('start')
 

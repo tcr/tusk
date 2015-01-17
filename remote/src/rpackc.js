@@ -1,9 +1,8 @@
 // MessagePack + Nanomsg + RPC
-// Stupid-simple RPC. Messages are either 
-//  - call: Invoke a receiving function with arguments
-//  - stream: Append data to a stream (if it exists)
-// State-machine like behavior can be produced from switching
-// the set of handler functions.
+// Stupid-simple RPC. Messages are [target, data] tuples.
+// A handler can recevie calls by target; streams can be created
+// to collect and replay data from a target. State-machine like
+// behavior can emerge from switching the handler set.
 
 var stream = require('stream');
 var nano = require('nanomsg');
@@ -15,11 +14,13 @@ function RPC (type, addr) {
   this.socket = nano.socket(type);
   this.socket.connect(addr);
   this.socket.on('message', function (buf) {
+    var message;
     try {
-      this.emit('message', msgpack.unpack(buf));
+      message = msgpack.unpack(buf);
     } catch (e) {
-      console.error('Invalid msgpack buffer received: ' + e.toString());
+      return console.error('Invalid msgpack client buffer received: ' + e.toString());
     }
+    this.emit('message', message)
   }.bind(this));
 
   this.on('message', function (buf) {
@@ -42,18 +43,17 @@ RPC.prototype.send = function (target, data) {
 }
 
 RPC.prototype.getStream = function (target) {
-  var streams = this.streams;
-  if (!streams[target]) {
-    streams[target] = new stream.Readable();
-    streams[target]._read = function () { };
+  if (!this.streams[target]) {
+    this.streams[target] = new stream.Readable();
+    this.streams[target]._read = function () { };
 
     this.on('message', function (buf) {
       if (buf.target == target) {
-        streams[target].push(Buffer.isBuffer(buf.data) ? buf.data : String(buf.data));
+        this.streams[target].push(Buffer.isBuffer(buf.data) ? buf.data : String(buf.data));
       }
     })
   }
-  return streams[target]
+  return this.streams[target]
 }
 
 RPC.prototype.use = function (handler) {
