@@ -153,6 +153,11 @@ def mp_listener(inq):
     print('exiting listener thread')
 
 if __name__ == '__main__':
+    try:
+        os.makedirs(path_vms)
+    except Exception:
+        pass
+    
     mp_clean()
     atexit.register(mp_clean)
 

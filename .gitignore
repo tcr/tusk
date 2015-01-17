@@ -1,9 +1,9 @@
 etc
-**/*.p12
+
 **/__pycache__
-**/*.yaml
-agent/vms
-**/Vagrantfile
-**/config
 **/venv
 **/*.cfg
+
+**/*.p12
+
+*.yaml

@@ -4,6 +4,7 @@ var fs   = require('fs');
 var cp = require('child_process');
 var msgpack = require('msgpack')
 var nano = require('nanomsg');
+var myip = require('my-ip');
 
 var rpackc = require('./rpackc');
 
@@ -23,7 +24,7 @@ function requestServer (name, onallocation) {
     onallocation(!result.status, result.connection);
   })
 
-  socket.connect('tcp://localhost:5858');
+  socket.connect('tcp://' + myip(null, true) + ':5858');
   socket.send(msgpack.pack(name));
 }
 
@@ -35,7 +36,7 @@ function build (addr, plan, onresult) {
   // Get document, or throw exception on error
   var steps = readPlan(plan);
 
-  var rpc = rpackc.connect('pair', addr);
+  var rpc = rpackc.connect('pair', addr.replace(/localhost/, myip(null, true)));
   rpc.getStream('out').pipe(process.stdout);
   rpc.getStream('err').pipe(process.stderr);
 
