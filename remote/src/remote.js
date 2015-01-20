@@ -17,14 +17,14 @@ function requestServer (name, onallocation) {
   var socket = nano.socket('req');
   setResendInterval(socket, 5*60*1000);
 
-  socket.on('message', function (data) {
+  socket.once('message', function (data) {
     var result = msgpack.unpack(data);
     socket.close()
 
     onallocation(!result.status, result.connection);
   })
 
-  socket.connect('tcp://localhost:5858');
+  socket.connect('tcp://' + myip(null, false) + ':5858');
   socket.send(msgpack.pack(name));
 }
 
@@ -38,7 +38,7 @@ function build (addr, plan, onresult) {
 
   console.log(arguments)
 
-  var rpc = rpackc.connect('pair', addr);
+  var rpc = rpackc.connect('pair', addr.replace('localhost', myip(null, false)));
   rpc.getStream('out').pipe(process.stdout);
   rpc.getStream('err').pipe(process.stderr);
 

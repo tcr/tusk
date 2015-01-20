@@ -103,8 +103,9 @@ def mp_consumer(inq, outq):
                     {"status": False, "error": "Could not retrieve SSH config.", "retry": True})
                 continue
 
-            addr = 'tcp://127.0.0.1:44999'
-            outq.put({"status": True, "connection": addr, "retry": True})
+            addr = 'tcp://0.0.0.0:44999'
+            remoteaddr = 'tcp://localhost:44999'
+            outq.put({"status": True, "connection": remoteaddr, "retry": True})
 
             print('connecting')
             rpc = None
@@ -121,8 +122,11 @@ def mp_consumer(inq, outq):
                 except:
                     traceback.print_exc()
 
+        print('!!!STOPPED THREAD')
         vagrant_destroy(name)
+        print('!!!VESTROYED IT')
         vm_clean(name)
+        print('!!!CLEANED IT')
 
     print('exiting consumer thread')
 
