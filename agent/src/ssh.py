@@ -101,7 +101,7 @@ class Handler:
         atexit.register(ssh_cleanup)
 
         # Connect SSH.
-        rpc.ssh.load_system_host_keys()
+        rpc.ssh.load_host_keys("/dev/null")
         rpc.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         rpc.ssh.connect(rpc.config['hostname'],
