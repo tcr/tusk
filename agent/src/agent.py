@@ -8,7 +8,9 @@ import subprocess
 import traceback
 import signal
 import queue
+from itertools import chain
 import msgpack
+import toml
 from nanomsg import Socket, PAIR, PUB, REP
 from threading import Thread, Lock
 from concurrent.futures import ThreadPoolExecutor
@@ -26,6 +28,17 @@ signal.signal(signal.SIGTERM, handler)
 
 path_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 path_vms = os.path.join(path_root, 'vms')
+path_config = os.path.join(path_root, 'config')
+
+
+def tusk_config():
+    with open(os.path.join(path_config, "vagrant.toml")) as conffile:
+        config = toml.loads(conffile.read())
+    return config
+
+
+def tusk_env():
+    return dict(chain(dict(os.environ).items(), tusk_config().items()))
 
 
 def vagrant_destroy(a):
@@ -34,7 +47,9 @@ def vagrant_destroy(a):
     """
     print('exec: vagrant destroy', a)
     retry = 5
-    while subprocess.call(['vagrant', 'destroy', '-f'], cwd=os.path.join(path_vms, a)) and retry > 0:
+    while subprocess.call(['vagrant', 'destroy', '-f'],
+        cwd=os.path.join(path_vms, a),
+        env=tusk_env()) and retry > 0:
         time.sleep(5)
         retry = retry - 1
     print('done: vagrant destroy')
@@ -42,8 +57,9 @@ def vagrant_destroy(a):
 
 def vagrant_up(a):
     print('exec: vagrant up', a)
-    ret = subprocess.call(
-        ['vagrant', 'up', '--provider=google'], cwd=os.path.join(path_vms, a))
+    ret = subprocess.call(['vagrant', 'up', '--provider=google'],
+        cwd=os.path.join(path_vms, a),
+        env=tusk_env())
     print('done: vagrant up')
     return ret
 
@@ -53,7 +69,8 @@ def vagrant_ssh_config(name):
     p = subprocess.Popen(cmd.split(),
                          stdout=subprocess.PIPE,
                          universal_newlines=True,
-                         cwd=os.path.join(path_vms, name))
+                         cwd=os.path.join(path_vms, name),
+                         env=tusk_env())
     (stdout, stderr) = p.communicate()
     return stdout
 
@@ -66,10 +83,8 @@ def vm_exists(a):
 def vm_init(name):
     """Initialize a new VM."""
     os.mkdir(os.path.join(path_vms, name))
-    shutil.copy(os.path.join(path_root, './config/Vagrantfile'),
+    shutil.copy(os.path.join(path_root, './Vagrantfile'),
                 os.path.join(path_vms, name, 'Vagrantfile'))
-    shutil.copy(os.path.join(path_root, './config/private.p12'),
-                os.path.join(path_vms, name, 'private.p12'))
 
 
 def vm_clean(arg):
@@ -161,6 +176,10 @@ def mp_listener(inq):
 if __name__ == '__main__':
     try:
         os.makedirs(path_vms)
+    except Exception:
+        pass
+    try:
+        os.makedirs(path_config)
     except Exception:
         pass
     

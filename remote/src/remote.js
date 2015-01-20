@@ -33,6 +33,10 @@ function readPlan (plan) {
 }
 
 function build (addr, plan, onresult) {
+  if (!addr) {
+    throw new Error('Expected connection address, received ' + String(addr));
+  }
+
   // Get document, or throw exception on error
   var steps = readPlan(plan);
 

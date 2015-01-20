@@ -132,8 +132,7 @@ class Handler:
     @staticmethod
     def download(rpc, src):
         path = '/tmp/result.tar.gz'
-        (result, size) = rpc.download(
-            bytes(src).decode('utf8', 'ignore'), path)
+        (result, size) = rpc.download(bytes(src).decode('utf8', 'ignore'), path)
         if result:
             rpc.send('download_ready', {
                 "available": True,
