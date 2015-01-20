@@ -5,6 +5,7 @@
   "main": "remote.js",
   "dependencies": {
     "js-yaml": "^3.2.5",
+    "minimist": "^1.1.0",
     "msgpack": "^0.2.4",
     "my-ip": "^1.1.1",
     "nanomsg": "^0.2.9",

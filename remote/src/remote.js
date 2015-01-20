@@ -96,16 +96,25 @@ exports.requestServer = requestServer;
 exports.build = build;
 
 if (require.main == module) {
-  if (!process.argv[2]) {
+  var argv = require('minimist')(process.argv.slice(2), {'--': true})
+
+  if (!argv._[0]) {
     console.error('Usage: remote openwrt -e ENV=value');
     process.exit(1);
   }
+  
+  var name = argv._[0];
+  var env = {};
+  (argv.e ? (typeof argv.e == 'string' ? [argv.e] : argv.e) : [])
+    .forEach(function (e) {
+      var split = e.split(/=(.+)?/, 2);
+      env[split[0]] = split[1] || "";
+    });
 
-  var name = process.argv[2];
+  console.log('Running:', name, env);
+
   requestServer(name, function (err, address) {
-    build(address, name, {
-      TUSK_BRANCH: 'tcr'
-    }, function (err, result) {
+    build(address, name, env, function (err, result) {
       console.log('exit', err);
       console.log(result);
       process.on('exit', function () {
