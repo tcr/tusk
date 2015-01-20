@@ -89,6 +89,9 @@ if (require.main == module) {
     build(address, name, function (err, result) {
       console.log('exit', err);
       console.log(result);
+      process.on('exit', function () {
+        process.exit(err);
+      })
     })
   });
 }
