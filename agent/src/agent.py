@@ -132,9 +132,11 @@ def mp_clean():
     clean = [f for f in os.listdir(
         path_vms) if os.path.isdir(os.path.join(path_vms, f))]
     if len(clean):
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            print('Cleaning', clean)
-            future = pool.map(vm_clean, clean)
+        for vm in clean:
+            vm_clean(vm)
+        # with ThreadPoolExecutor(max_workers=4) as pool:
+        #     print('Cleaning', clean)
+        #     future = pool.map(vm_clean, clean)
     os.rmdir(path_vms)
     os.mkdir(path_vms)
     print('done cleaning.')
