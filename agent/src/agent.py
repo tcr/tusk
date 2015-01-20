@@ -122,11 +122,11 @@ def mp_consumer(inq, outq):
                 except:
                     traceback.print_exc()
 
-        print('!!!STOPPED THREAD')
         vagrant_destroy(name)
-        print('!!!VESTROYED IT')
         vm_clean(name)
-        print('!!!CLEANED IT')
+
+        # TO CHECK DISK IS ASLEEP
+        time.sleep(10)
 
     print('exiting consumer thread')
 
