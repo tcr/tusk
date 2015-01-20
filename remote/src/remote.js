@@ -24,19 +24,21 @@ function requestServer (name, onallocation) {
     onallocation(!result.status, result.connection);
   })
 
-  socket.connect('tcp://' + myip(null, true) + ':5858');
+  socket.connect('tcp://localhost:5858');
   socket.send(msgpack.pack(name));
 }
 
 function readPlan (plan) {
-  return yaml.safeLoad(fs.readFileSync(path.join('./plan/', plan + '.yaml'), 'utf8'));
+  return yaml.safeLoad(fs.readFileSync(path.join('./plan', plan + '.yaml'), 'utf8'));
 }
 
 function build (addr, plan, onresult) {
   // Get document, or throw exception on error
   var steps = readPlan(plan);
 
-  var rpc = rpackc.connect('pair', addr.replace(/localhost/, myip(null, true)));
+  console.log(arguments)
+
+  var rpc = rpackc.connect('pair', addr);
   rpc.getStream('out').pipe(process.stdout);
   rpc.getStream('err').pipe(process.stderr);
 
@@ -82,8 +84,9 @@ if (require.main == module) {
     process.exit(1);
   }
 
-  requestServer(process.argv[2], function (err, address) {
-    build(address, function (err, result) {
+  var name = process.argv[2];
+  requestServer(name, function (err, address) {
+    build(address, name, function (err, result) {
       console.log('exit', err);
       console.log(result);
     })

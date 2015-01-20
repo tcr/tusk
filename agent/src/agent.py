@@ -103,7 +103,7 @@ def mp_consumer(inq, outq):
                     {"status": False, "error": "Could not retrieve SSH config.", "retry": True})
                 continue
 
-            addr = 'tcp://127.0.0.1:44555'
+            addr = 'tcp://127.0.0.1:44999'
             outq.put({"status": True, "connection": addr, "retry": True})
 
             print('connecting')
@@ -134,7 +134,7 @@ def mp_clean():
     if len(clean):
         with ThreadPoolExecutor(max_workers=4) as pool:
             print('Cleaning', clean)
-            pool.map(vm_clean, clean)
+            future = pool.map(vm_clean, clean)
     os.rmdir(path_vms)
     os.mkdir(path_vms)
     print('done cleaning.')
@@ -142,7 +142,7 @@ def mp_clean():
 
 def mp_listener(inq):
     socket = Socket(REP)
-    socket.bind('tcp://*:5858')
+    socket.bind('tcp://0.0.0.0:5858')
 
     print('Listening')
     while alive:

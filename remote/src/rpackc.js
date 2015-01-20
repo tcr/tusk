@@ -20,12 +20,15 @@ function RPC (type, addr) {
     } catch (e) {
       return console.error('Invalid msgpack client buffer received: ' + e.toString());
     }
-    this.emit('message', message)
+    this.emit('message', {
+      target: message[0],
+      data: message[1]
+    })
   }.bind(this));
 
   this.on('message', function (buf) {
-    if (buf[0]) {
-      this.call(buf[0], buf[1]);
+    if (buf.target) {
+      this.call(buf.target, buf.data);
     }
   })
 
