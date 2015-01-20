@@ -32,13 +32,26 @@ function readPlan (plan) {
   return yaml.safeLoad(fs.readFileSync(path.join('./plan', plan + '.yaml'), 'utf8'));
 }
 
-function build (addr, plan, onresult) {
+function build (addr, plan, env, onresult) {
+  if (!env) {
+    onresult = env;
+    env = {};
+  }
+
   if (!addr) {
     throw new Error('Expected connection address, received ' + String(addr));
   }
 
   // Get document, or throw exception on error
   var steps = readPlan(plan);
+
+  steps = steps.map(function (step) {
+    var setters = '';
+    for (var name in env) {
+      setters += String(name) + '=' + String(env[name]) + ' ';
+    }
+    return setters + step;
+  });
 
   console.log(arguments)
 
@@ -84,13 +97,15 @@ exports.build = build;
 
 if (require.main == module) {
   if (!process.argv[2]) {
-    console.error('Usage: runner openwrt');
+    console.error('Usage: remote openwrt -e ENV=value');
     process.exit(1);
   }
 
   var name = process.argv[2];
   requestServer(name, function (err, address) {
-    build(address, name, function (err, result) {
+    build(address, name, {
+      TUSK_BRANCH: 'tcr'
+    }, function (err, result) {
       console.log('exit', err);
       console.log(result);
       process.on('exit', function () {
