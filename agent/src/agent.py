@@ -10,7 +10,7 @@ import signal
 import queue
 from itertools import chain
 import msgpack
-import toml
+import yaml
 from nanomsg import Socket, PAIR, PUB, REP
 from threading import Thread, Lock
 from concurrent.futures import ThreadPoolExecutor
@@ -32,13 +32,23 @@ path_config = os.path.join(path_root, 'config')
 
 
 def tusk_config():
-    with open(os.path.join(path_config, "vagrant.toml")) as conffile:
-        config = toml.loads(conffile.read())
+    path = os.path.join(path_config, "tusk.yaml")
+    if not os.path.exists(path):
+        return {}
+    with open(path) as conffile:
+        config = yaml.load(conffile.read())
     return config
 
 
 def tusk_env():
-    return dict(chain(dict(os.environ).items(), tusk_config().items()))
+    overlay = {}
+    config = tusk_config()
+    if config.get('gcloud'):
+        overlay['GCLOUD_PROJECT_ID'] = config['gcloud'].get('project_id')
+        overlay['GCLOUD_CLIENT_EMAIL'] = config['gcloud'].get('client_email')
+        overlay['GCLOUD_PRIVILEGED'] = "1" if config['gcloud'].get('privileged') else "0"
+
+    return dict(chain(dict(os.environ).items(), overlay.items()))
 
 
 def vagrant_destroy(a):
@@ -175,15 +185,16 @@ def mp_listener(inq):
         socket.send(msgpack.packb(outq.get()))
     print('exiting listener thread')
 
+def opt_makedirs(path):
+    try:
+        os.makedirs(path)
+    except Exception:
+        pass
+
 if __name__ == '__main__':
-    try:
-        os.makedirs(path_vms)
-    except Exception:
-        pass
-    try:
-        os.makedirs(path_config)
-    except Exception:
-        pass
+    opt_makedirs(path_config) # make config path
+    opt_makedirs(path_vms) # make VM path
+    tusk_config() # Check config
     
     mp_clean()
     atexit.register(mp_clean)
