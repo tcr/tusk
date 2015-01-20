@@ -150,8 +150,10 @@ def mp_clean():
     print('Cleaning up...')
     clean = [f for f in os.listdir(
         path_vms) if os.path.isdir(os.path.join(path_vms, f))]
+    print(clean)
     if len(clean):
         for vm in clean:
+            vagrant_destroy(vm)
             vm_clean(vm)
         # with ThreadPoolExecutor(max_workers=4) as pool:
         #     print('Cleaning', clean)

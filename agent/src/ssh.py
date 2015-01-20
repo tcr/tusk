@@ -10,6 +10,7 @@ import subprocess
 import paramiko
 from rpackc import RPC
 from nanomsg import Socket, PAIR, PUB, NanoMsgAPIError
+from agent import path_config
 
 
 def run_command(ssh, rpc, cmd):
@@ -71,6 +72,22 @@ class SSHRPC(RPC):
 
         self.cmdid = 0
 
+    def upload(self, src, dest):
+        # Copy a file out.
+        result = False
+        size = 0
+        try:
+            sftp = self.ssh.open_sftp()
+            sftp.put(src, dest)
+            sftp.close()
+
+            result = True
+        except Exception as e:
+            print(e)
+            pass
+
+        return (result,)
+
     def download(self, src, dest):
         # Copy a file out.
         result = False
@@ -112,6 +129,10 @@ class Handler:
                     else rpc.config['identityfile'])
 
         rpc.send('start')
+
+        rpc.upload(os.path.realpath(os.path.join(path_config, 'gcloud.p12')), '/home/tim/gcloud.p12')
+        rpc.upload(os.path.realpath(os.path.join(path_config, 'vagrant.toml')), '/home/tim/vagrant.toml')
+        rpc.upload(os.path.realpath(os.path.join(path_config, 'github.key')), '/home/tim/github.key')
 
     @staticmethod
     def process_start(rpc, cmds, *args):
