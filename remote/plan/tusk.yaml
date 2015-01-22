@@ -59,7 +59,7 @@
 
 - mkdir -p /work/tusk/agent/config
 - cp ~/gcloud.p12 /work/tusk/agent/config
-- cp ~/vagrant.toml /work/tusk/agent/config
+- cp ~/tusk.yaml /work/tusk/agent/config
 
 - cd /work/tusk/remote && npm install
 

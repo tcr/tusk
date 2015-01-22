@@ -140,6 +140,7 @@ class Handler:
         # Self-test
         rpc.upload(os.path.realpath(os.path.join(path_config, 'gcloud.p12')), '/home/tim/gcloud.p12')
         rpc.upload(os.path.realpath(os.path.join(path_config, 'vagrant.toml')), '/home/tim/vagrant.toml')
+        rpc.upload(os.path.realpath(os.path.join(path_config, 'tusk.yaml')), '/home/tim/tusk.yaml')
         rpc.upload(os.path.realpath(os.path.join(path_config, 'github.key')), '/home/tim/github.key')
 
     @staticmethod
