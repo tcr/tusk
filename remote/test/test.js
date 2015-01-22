@@ -50,10 +50,10 @@ describe('remote', function(){
   this.timeout(5*60*1000);
 
   step('should run uname on linux', function (done) {
-    remote.requestServer('test', function (err, address) {
+    remote.requestServer('test-uname', function (err, address) {
       expect(err).to.not.be.ok();
 
-      remote.build(address, 'test', {}, function (err, result) {
+      remote.build(address, 'test-uname', {}, function (err, result) {
         expect(err).to.equal(0);
         expect(result).to.have.property('available').that.is.ok();
         expect(result).to.have.property('size').that.is.a('number');
