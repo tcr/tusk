@@ -80,7 +80,11 @@ function build (addr, plan, env, onresult) {
       if (ret.code) {
         rpc.send('exit');
       } else {
-        rpc.send('download', '/result/result.tar.gz');
+        rpc.send('download', {
+          source: '/result/result.tar.gz',
+          bucket: 'tusk',
+          path: plan + '.tar.gz',
+        });
       }
     },
     'download_ready': function (rpc, result) {

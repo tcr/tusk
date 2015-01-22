@@ -53,18 +53,12 @@ describe('remote', function(){
     remote.requestServer('test', function (err, address) {
       expect(err).to.not.be.ok();
 
-      remote.build(address, 'test', function (err, result) {
+      remote.build(address, 'test', {}, function (err, result) {
         expect(err).to.equal(0);
         expect(result).to.have.property('available').that.is.ok();
-        
-        parsetar(result, function (err, uname) {
-          expect(err).to.not.be.ok();
-          expect(uname)
-            .to.be.a('string')
-            .and.to.match(/Linux/i);
-
-          done();
-        })
+        expect(result).to.have.property('size').that.is.a('number');
+        expect(result).to.have.property('url').that.is.a('string');
+        done();
       })
     });
   });
@@ -73,7 +67,7 @@ describe('remote', function(){
     remote.requestServer('test-fail', function (err, address) {
       expect(err).to.not.be.ok();
 
-      remote.build(address, 'test-fail', function (err, result) {
+      remote.build(address, 'test-fail', {}, function (err, result) {
         expect(err).to.equal(42);
 
         done();

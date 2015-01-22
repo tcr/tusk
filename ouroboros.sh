@@ -7,7 +7,7 @@ source venv/bin/activate
 python3 src/agent.py &
 AGENT_PID=$!
 
-cd ../remote; node src/remote.js tusk
+cd ../remote; node src/remote.js tusk -e TUSK_BRANCH=tcr
 SUCCESS=$?
 
 # sleep 5

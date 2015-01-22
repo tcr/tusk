@@ -8,9 +8,12 @@ import argparse
 import json
 import subprocess
 import paramiko
+import traceback
+import json
 from rpackc import RPC
 from nanomsg import Socket, PAIR, PUB, NanoMsgAPIError
 from agent import path_config
+import storage
 
 
 def run_command(ssh, rpc, cmd):
@@ -88,22 +91,26 @@ class SSHRPC(RPC):
 
         return (result,)
 
-    def download(self, src, dest):
+    def download(self, src, dest_bucket, dest_key):
         # Copy a file out.
         result = False
         size = 0
+        url = None
         try:
             sftp = self.ssh.open_sftp()
-            sftp.get(src, dest)
+            size = sftp.stat(src).st_size
+            fd = sftp.open(src, mode="rb")
+            storage.upload(fd, storage.connect(), dest_bucket, dest_key)
+            url = "https://storage.googleapis.com/{}/{}".format(dest_bucket, dest_key)
+            fd.close()
             sftp.close()
 
             result = True
-            size = os.path.getsize(dest)
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             pass
 
-        return (result, size)
+        return (result, size, url)
 
 
 class Handler:
@@ -130,6 +137,7 @@ class Handler:
 
         rpc.send('start')
 
+        # Self-test
         rpc.upload(os.path.realpath(os.path.join(path_config, 'gcloud.p12')), '/home/tim/gcloud.p12')
         rpc.upload(os.path.realpath(os.path.join(path_config, 'vagrant.toml')), '/home/tim/vagrant.toml')
         rpc.upload(os.path.realpath(os.path.join(path_config, 'github.key')), '/home/tim/github.key')
@@ -151,14 +159,17 @@ class Handler:
         rpc.send('process_exit', {"id": cmdid, "code": code})
 
     @staticmethod
-    def download(rpc, src):
-        path = '/tmp/result.tar.gz'
-        (result, size) = rpc.download(bytes(src).decode('utf8', 'ignore'), path)
+    def download(rpc, dest):
+        source = bytes(dest[b'source']).decode('utf8', 'ignore')
+        bucket = bytes(dest[b'bucket']).decode('utf8', 'ignore')
+        key = bytes(dest[b'path']).decode('utf8', 'ignore')
+
+        (result, size, url) = rpc.download(source, bucket, key)
         if result:
             rpc.send('download_ready', {
                 "available": True,
                 "size": size,
-                "path": path,
+                "url": url,
             })
         else:
             rpc.send('download_ready', {

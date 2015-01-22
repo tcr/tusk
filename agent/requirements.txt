@@ -1,6 +1,7 @@
 GoogleAppEngineCloudStorageClient==1.9.15.0
 PyYAML==3.11
 argh==0.26.1
+-e git+http://github.com/tcr/boto.git@tcr-gspy3#egg=boto
 clint==0.3.1
 coverage==3.7.1
 ecdsa==0.11
