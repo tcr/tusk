@@ -73,5 +73,29 @@ describe('remote', function(){
         done();
       })
     });
-  })
+  });
+
+  step('should support env variables', function (done) {
+    remote.requestServer('test-env', function (err, address) {
+      expect(err).to.not.be.ok();
+
+      remote.build(address, 'test-env', {
+        INPUT: "OK"
+      }, function (err, result) {
+        expect(err).to.not.be.ok();
+
+        remote.requestServer('test-env', function (err, address) {
+          expect(err).to.not.be.ok();
+
+          remote.build(address, 'test-env', {
+            INPUT: "NOT OK"
+          }, function (err, result) {
+            expect(err).to.be.ok();
+
+            done();
+          });
+        });
+      });
+    });
+  });
 });

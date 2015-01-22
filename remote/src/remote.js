@@ -45,14 +45,6 @@ function build (addr, plan, env, onresult) {
   // Get document, or throw exception on error
   var steps = readPlan(plan);
 
-  steps = steps.map(function (step) {
-    var setters = '';
-    for (var name in env) {
-      setters += String(name) + '=' + String(env[name]) + ' ';
-    }
-    return setters + step;
-  });
-
   console.log(arguments)
 
   var rpc = rpackc.connect('pair', addr.replace('localhost', myip(null, false)));
@@ -62,7 +54,10 @@ function build (addr, plan, env, onresult) {
   var download = null, exitcode = 0;
   rpc.use({
     'start': function (rpc) {
-      rpc.send('process_start', steps);
+      rpc.send('process_start', {
+        commands: steps,
+        env: env
+      });
     },
     'exit': function (rpc, result) {
       console.log('exit');

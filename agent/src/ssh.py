@@ -10,20 +10,24 @@ import subprocess
 import paramiko
 import traceback
 import json
+import shlex
 from rpackc import RPC
 from nanomsg import Socket, PAIR, PUB, NanoMsgAPIError
 from agent import path_config
 import storage
 
 
-def run_command(ssh, rpc, cmd):
+def run_command(ssh, rpc, cmd, env = {}):
     rpc.send('command_enter', {"id": 0, "cmd": cmd})
 
     chan = rpc.ssh.get_transport().open_session()
     chan.setblocking(0)
     # chan.settimeout(10800)
 
+    for k,v in env.items():
+        cmd = 'export {}={}; {}'.format(bytes(k).decode('utf-8'), shlex.quote(bytes(v).decode('utf-8')), cmd)
     chan.exec_command(cmd)
+    print(cmd)
 
     # flush all data.
     exit_ready = False
@@ -144,16 +148,22 @@ class Handler:
         rpc.upload(os.path.realpath(os.path.join(path_config, 'github.key')), '/home/tim/github.key')
 
     @staticmethod
-    def process_start(rpc, cmds, *args):
+    def process_start(rpc, req):
         cmdid = rpc.cmdid
         rpc.cmdid += 1
+
+        cmds = req.get(b'commands', [])
+        env = req.get(b'env', {})
+
+        print(cmds)
+        print(env)
 
         code = 0
         for cmd in cmds:
             cmd = (bytes(cmd) or b'').decode('utf-8', 'ignore')
             print(cmd)
 
-            code = run_command(rpc.ssh, rpc, cmd)
+            code = run_command(rpc.ssh, rpc, cmd, env)
             if code != 0:
                 break
 
