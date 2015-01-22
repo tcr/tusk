@@ -1,0 +1,5 @@
+#!/bin/bash
+
+PWD=$(dirname $0)
+cd $PWD/../remote
+node src/remote.js $@

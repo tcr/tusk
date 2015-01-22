@@ -1,0 +1,6 @@
+#!/bin/bash
+
+PWD=$(dirname $0)
+cd $PWD/../agent
+source venv/bin/activate
+python3 src/agent.py
