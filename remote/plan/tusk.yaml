@@ -1,6 +1,9 @@
 # Work folder
 - sudo mkdir -p /work; sudo chown -R $USER /work
 
+# Conflicting google stuff
+- sudo rm -rf /usr/share/google/boto
+
 # http://www.binarytides.com/enable-testing-repo-debian/
 - |
     cat << EOF | sudo tee -a /etc/apt/sources.list
