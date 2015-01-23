@@ -88,7 +88,7 @@ describe('remote', function(){
           expect(err).to.not.be.ok();
 
           remote.build(address, 'test-env', {
-            env { INPUT: "NOT OK" },
+            env: { INPUT: "NOT OK" },
           }, function (err, result) {
             expect(err).to.be.ok();
 
