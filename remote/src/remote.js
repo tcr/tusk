@@ -55,6 +55,8 @@ function build (addr, plan, opts, onresult) {
   rpc.getStream('out').pipe(process.stdout);
   rpc.getStream('err').pipe(process.stderr);
 
+  rpc.keepalive(3000);
+
   var download = null, exitcode = 0;
   rpc.use({
     'start': function (rpc) {

@@ -37,7 +37,21 @@ function RPC (type, addr) {
 
 util.inherits(RPC, events.EventEmitter);
 
+RPC.prototype.keepalive = function (timeout) {
+  if (this._keepalive) {
+    clearInterval(this._keepalive);
+  } else {
+    this.once('close', function () {
+      clearInterval(this._keepalive);
+    })
+  }
+  this._keepalive = setInterval(function () {
+    this.send('keepalive');
+  }.bind(this), timeout);
+}
+
 RPC.prototype.close = function () {
+  this.emit('close');
   this.socket.close();
 };
 

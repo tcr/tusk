@@ -1,5 +1,7 @@
 #!/bin/bash
 
+trap '[ -n "$(jobs -pr)" ] && kill $(jobs -pr)' INT QUIT TERM EXIT
+
 PWD=$(dirname $0)
 cd $PWD/../remote
 node src/remote.js $@

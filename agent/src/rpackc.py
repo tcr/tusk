@@ -6,6 +6,7 @@
 
 import atexit
 import msgpack
+import traceback
 from nanomsg import Socket, PAIR, PUB, NanoMsgAPIError
 
 
@@ -14,8 +15,8 @@ class RPC:
 
     def __init__(self, kind, addr):
         self.socket = Socket(kind)
-        self.socket._set_recv_timeout(5 * 5000)
-        self.socket._set_send_timeout(5 * 5000)
+        self.socket._set_recv_timeout(30 * 1000)
+        self.socket._set_send_timeout(30 * 1000)
 
         self.socket.bind(addr)
 
@@ -46,13 +47,14 @@ class RPC:
                 if isinstance(pkt, list) and len(pkt) > 0 and self.handler:
                     target = bytes(pkt[0] or '').decode('utf-8', 'ignore')
                     data = pkt[1] if len(pkt) > 1 else None
-                    if getattr(self.handler, target):
+                    if getattr(self.handler, target, None):
                         getattr(self.handler, target)(self, data)
                 else:
                     print('Invalid msgpack server buffer received:', pkt, file=sys.stderr)
         except NanoMsgAPIError as e:
             # Timeout
             print('RPC error:', e)
+            traceback.print_exc()
             success = False
 
         return success
