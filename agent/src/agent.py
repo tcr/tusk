@@ -12,9 +12,7 @@ import yaml
 from nanomsg import Socket, PAIR, PUB, REP
 from threading import Thread, Lock
 from concurrent.futures import ThreadPoolExecutor
-import ssh
-import vagrant
-
+from . import vagrant, paths, ssh, config
 
 def handler(signum, frame):
     global alive
@@ -25,45 +23,22 @@ def handler(signum, frame):
 alive = True
 signal.signal(signal.SIGTERM, handler)
 
-path_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-path_vms = os.path.join(path_root, 'vms')
-path_config = os.path.join(path_root, 'config')
-
-
-def tusk_config():
-    path = os.path.join(path_config, "tusk.yaml")
-    if not os.path.exists(path):
-        return {}
-    with open(path) as conffile:
-        config = yaml.load(conffile.read())
-    return config
-
-
-def tusk_env():
-    overlay = {}
-    config = tusk_config()
-    if config.get('gcloud'):
-        overlay['GCLOUD_PROJECT_ID'] = config['gcloud'].get('project_id')
-        overlay['GCLOUD_CLIENT_EMAIL'] = config['gcloud'].get('client_email')
-        overlay['GCLOUD_PRIVILEGED'] = "1" if config['gcloud'].get('privileged') else "0"
-    return overlay
-
 
 def vm_exists(a):
     """Check if a VM exists."""
-    return os.path.exists(os.path.join(path_vms, a, 'Vagrantfile'))
+    return os.path.exists(os.path.join(paths.vms, a, 'Vagrantfile'))
 
 
 def vm_init(name):
     """Initialize a new VM."""
-    os.mkdir(os.path.join(path_vms, name))
-    shutil.copy(os.path.join(path_root, './Vagrantfile'),
-                os.path.join(path_vms, name, 'Vagrantfile'))
+    os.mkdir(os.path.join(paths.vms, name))
+    shutil.copy(os.path.join(paths.root, './Vagrantfile'),
+                os.path.join(paths.vms, name, 'Vagrantfile'))
 
 
 def vm_clean(arg):
     """Clean a VM."""
-    shutil.rmtree(os.path.join(path_vms, arg))
+    shutil.rmtree(os.path.join(paths.vms, arg))
 
 
 def mp_consumer(inq, outq):
@@ -82,12 +57,12 @@ def mp_consumer(inq, outq):
             continue
 
         vm_init(name)
-        if vagrant.up(name, tusk_env()):
+        if vagrant.up(name, config.env()):
             outq.put(
                 {"status": False, "error": "Could not initialize VM.", "retry": True})
         else:
-            config = vagrant.ssh_config(name, tusk_env())
-            if not config:
+            ssh_config = vagrant.ssh_config(name, config.env())
+            if not ssh_config:
                 outq.put(
                     {"status": False, "error": "Could not retrieve SSH config.", "retry": True})
                 continue
@@ -99,7 +74,7 @@ def mp_consumer(inq, outq):
             print('connecting')
             rpc = None
             try:
-                rpc = ssh.SSHRPC(ssh.PAIR, addr, io.StringIO(config))
+                rpc = ssh.SSHRPC(ssh.PAIR, addr, io.StringIO(ssh_config))
                 rpc.use(ssh.Handler)
                 rpc.listen_loop()
             except Exception as e:
@@ -111,7 +86,7 @@ def mp_consumer(inq, outq):
                 except:
                     traceback.print_exc()
 
-        vagrant.destroy(name, tusk_env())
+        vagrant.destroy(name, config.env())
         vm_clean(name)
 
         # TO CHECK DISK IS ASLEEP
@@ -123,21 +98,21 @@ def mp_consumer(inq, outq):
 def mp_clean():
     print('Cleaning up...')
     clean = [f for f in os.listdir(
-        path_vms) if os.path.isdir(os.path.join(path_vms, f))]
+        paths.vms) if os.path.isdir(os.path.join(paths.vms, f))]
     print(clean)
     if len(clean):
         for vm in clean:
-            vagrant.destroy(vm, tusk_env())
+            vagrant.destroy(vm, config.env())
             vm_clean(vm)
         # with ThreadPoolExecutor(max_workers=4) as pool:
         #     print('Cleaning', clean)
         #     future = pool.map(vm_clean, clean)
-    os.rmdir(path_vms)
-    os.mkdir(path_vms)
+    os.rmdir(paths.vms)
+    os.mkdir(paths.vms)
     print('done cleaning.')
 
 
-def mp_listener(inq):
+def mp_listener(inq, outq):
     socket = Socket(REP)
     socket.bind('tcp://0.0.0.0:5858')
 
@@ -148,36 +123,3 @@ def mp_listener(inq):
         print('Bringing up machine')
         socket.send(msgpack.packb(outq.get()))
     print('exiting listener thread')
-
-
-def opt_makedirs(path):
-    try:
-        os.makedirs(path)
-    except Exception:
-        pass
-
-
-if __name__ == '__main__':
-    opt_makedirs(path_config) # make config path
-    opt_makedirs(path_vms) # make VM path
-    tusk_config() # Check config format
-    
-    mp_clean()
-    atexit.register(mp_clean)
-
-    inq = queue.Queue()
-    outq = queue.Queue()
-
-    pl = Thread(target=mp_listener, args=(inq,))
-    pl.daemon = True
-    pc = Thread(target=mp_consumer, args=(inq, outq))
-    pc.daemon = True
-
-    pl.start()
-    pc.start()
-
-    print('joining...')
-    pc.join()
-    print('joined consumer...')
-    # pl.join()
-    # print('joined listenre...')
