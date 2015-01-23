@@ -39,7 +39,7 @@
 - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
 
 - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -t testing gcc python3.4 python3.4-venv python3.4-dev
-- yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y file bzip2 build-essential make git curl libnanomsg-dev
+- yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y file bzip2 build-essential make git curl libnanomsg-dev zlib1g-dev
 
 - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -t testing vagrant
 - vagrant plugin install vagrant-google
