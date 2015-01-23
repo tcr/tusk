@@ -4,17 +4,16 @@ import os
 import time
 import sys
 import io
-import subprocess
 import traceback
 import signal
 import queue
-from itertools import chain
 import msgpack
 import yaml
 from nanomsg import Socket, PAIR, PUB, REP
 from threading import Thread, Lock
 from concurrent.futures import ThreadPoolExecutor
 import ssh
+import vagrant
 
 
 def handler(signum, frame):
@@ -47,42 +46,7 @@ def tusk_env():
         overlay['GCLOUD_PROJECT_ID'] = config['gcloud'].get('project_id')
         overlay['GCLOUD_CLIENT_EMAIL'] = config['gcloud'].get('client_email')
         overlay['GCLOUD_PRIVILEGED'] = "1" if config['gcloud'].get('privileged') else "0"
-
-    return dict(chain(dict(os.environ).items(), overlay.items()))
-
-
-def vagrant_destroy(a):
-    """
-    Call vagrant destroy. Allow retry in case butchered processes aborted.
-    """
-    print('exec: vagrant destroy', a)
-    retry = 5
-    while subprocess.call(['vagrant', 'destroy', '-f'],
-        cwd=os.path.join(path_vms, a),
-        env=tusk_env()) and retry > 0:
-        time.sleep(5)
-        retry = retry - 1
-    print('done: vagrant destroy')
-
-
-def vagrant_up(a):
-    print('exec: vagrant up', a)
-    ret = subprocess.call(['vagrant', 'up', '--provider=google'],
-        cwd=os.path.join(path_vms, a),
-        env=tusk_env())
-    print('done: vagrant up')
-    return ret
-
-
-def vagrant_ssh_config(name):
-    cmd = "vagrant ssh-config"
-    p = subprocess.Popen(cmd.split(),
-                         stdout=subprocess.PIPE,
-                         universal_newlines=True,
-                         cwd=os.path.join(path_vms, name),
-                         env=tusk_env())
-    (stdout, stderr) = p.communicate()
-    return stdout
+    return overlay
 
 
 def vm_exists(a):
@@ -118,11 +82,11 @@ def mp_consumer(inq, outq):
             continue
 
         vm_init(name)
-        if vagrant_up(name):
+        if vagrant.up(name, tusk_env()):
             outq.put(
                 {"status": False, "error": "Could not initialize VM.", "retry": True})
         else:
-            config = vagrant_ssh_config(name)
+            config = vagrant.ssh_config(name, tusk_env())
             if not config:
                 outq.put(
                     {"status": False, "error": "Could not retrieve SSH config.", "retry": True})
@@ -147,7 +111,7 @@ def mp_consumer(inq, outq):
                 except:
                     traceback.print_exc()
 
-        vagrant_destroy(name)
+        vagrant.destroy(name, tusk_env())
         vm_clean(name)
 
         # TO CHECK DISK IS ASLEEP
@@ -163,7 +127,7 @@ def mp_clean():
     print(clean)
     if len(clean):
         for vm in clean:
-            vagrant_destroy(vm)
+            vagrant.destroy(vm, tusk_env())
             vm_clean(vm)
         # with ThreadPoolExecutor(max_workers=4) as pool:
         #     print('Cleaning', clean)
@@ -185,16 +149,18 @@ def mp_listener(inq):
         socket.send(msgpack.packb(outq.get()))
     print('exiting listener thread')
 
+
 def opt_makedirs(path):
     try:
         os.makedirs(path)
     except Exception:
         pass
 
+
 if __name__ == '__main__':
     opt_makedirs(path_config) # make config path
     opt_makedirs(path_vms) # make VM path
-    tusk_config() # Check config
+    tusk_config() # Check config format
     
     mp_clean()
     atexit.register(mp_clean)
