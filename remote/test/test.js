@@ -77,19 +77,22 @@ describe('remote', function(){
   });
 
   step('should result in a sha1 hash of input', function (done) {
-    expect(path.basename(unameResult)).to.equal(sha1('test-uname'));
+    expect(path.basename(unameResult, '.tar.gz')).to.equal(sha1('test-uname'));
+    done();
   });
 
   step('should result in a public tar.gz file', function (done) {
-    request(unameResult, function (err, stream) {
+    var req = request.get(unameResult)
+    
+    req.on('response', function(response) {
+      expect(response.statusCode).to.equal(200);
+    });
+
+    parsetar(req, function (err, uname) {
       expect(err).to.not.be.ok();
+      expect(uname).to.be.a('string').and.to.match(/Linux/i);
 
-      parsetar(stream, function (err, uname) {
-        expect(err).to.not.be.ok();
-        expect(uname).to.be.a('string').and.to.match(/Linux/i);
-
-        done();
-      })
+      done();
     });
   });
 
@@ -110,21 +113,11 @@ describe('remote', function(){
       expect(err).to.not.be.ok();
 
       remote.build(address, 'test-env', {
-        env: { INPUT: "OK" },
+        env: { ENV_OK: "OK", ENV_NOT_OK: "DUMMY" },
       }, function (err, result) {
         expect(err).to.not.be.ok();
 
-        remote.requestServer('test-env', function (err, address) {
-          expect(err).to.not.be.ok();
-
-          remote.build(address, 'test-env', {
-            env: { INPUT: "NOT OK" },
-          }, function (err, result) {
-            expect(err).to.be.ok();
-
-            done();
-          });
-        });
+        done();
       });
     });
   });

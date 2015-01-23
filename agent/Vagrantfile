@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
     google.google_client_email = ENV.fetch("GCLOUD_CLIENT_EMAIL")
     google.google_key_location = File.realpath(File.dirname(__FILE__) + "/../../config/gcloud.p12")
     google.service_accounts = ENV.fetch("GCLOUD_PRIVILEGED") ? ["compute"] : nil
-    google.machine_type = "n1-highmem-4"
+    google.machine_type = "n1-highmem-8"
 
     override.ssh.username = "tim"
     #override.ssh.private_key_path = "~/.ssh/id_rsa"

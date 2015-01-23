@@ -1,2 +1,5 @@
 build:
-    - if [[ "$INPUT" -eq "OK" ]]; then exit 0; else exit 1; fi
+  - echo "$ENV_OK"
+  - if [[ "$ENV_OK" -eq "OK" ]]; then exit 0; else exit 1; fi
+  - echo "$ENV_NOT_OK"
+  - if [[ "$ENV_NOT_OK" -ne "OK" ]]; then exit 0; else exit 1; fi

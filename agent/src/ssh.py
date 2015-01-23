@@ -11,6 +11,7 @@ import paramiko
 import traceback
 import json
 import shlex
+import selectors
 from .rpackc import RPC
 from nanomsg import Socket, PAIR, PUB, NanoMsgAPIError
 from . import storage, paths
@@ -31,8 +32,9 @@ def run_command(ssh, rpc, cmd, env = {}):
     exit_ready = False
     stdout_done = False
     stderr_done = False
-    while not (exit_ready and stdout_done and stderr_done):
-        exit_ready = chan.exit_status_ready()
+
+    def read(conn, mask):
+        nonlocal exit_ready, stdout_done, stderr_done
 
         # stdout and stderr may not be done after exit code is
         # returned. also .recv() returning length 0 is the only
@@ -60,6 +62,17 @@ def run_command(ssh, rpc, cmd, env = {}):
                     rpc.send('err', res)
         except:
             pass
+
+    sel = selectors.DefaultSelector()
+    sel.register(chan.fileno(), selectors.EVENT_READ, read)
+
+    while not (exit_ready and stdout_done and stderr_done):
+        exit_ready = chan.exit_status_ready()
+
+        events = sel.select()
+        for key, mask in events:
+            callback = key.data
+            callback(key.fileobj, mask)
 
     code = chan.recv_exit_status()
     rpc.send('command_exit', {"id": 0, "cmd": cmd, "code": code})
