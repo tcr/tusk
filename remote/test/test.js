@@ -53,7 +53,7 @@ describe('remote', function(){
     remote.requestServer('test-uname', function (err, address) {
       expect(err).to.not.be.ok();
 
-      remote.build(address, 'test-uname', {}, function (err, result) {
+      remote.build(address, 'test-uname', function (err, result) {
         expect(err).to.equal(0);
         expect(result).to.have.property('available').that.is.ok();
         expect(result).to.have.property('size').that.is.a('number');
@@ -67,7 +67,7 @@ describe('remote', function(){
     remote.requestServer('test-fail', function (err, address) {
       expect(err).to.not.be.ok();
 
-      remote.build(address, 'test-fail', {}, function (err, result) {
+      remote.build(address, 'test-fail', function (err, result) {
         expect(err).to.equal(42);
 
         done();
@@ -80,7 +80,7 @@ describe('remote', function(){
       expect(err).to.not.be.ok();
 
       remote.build(address, 'test-env', {
-        INPUT: "OK"
+        env: { INPUT: "OK" },
       }, function (err, result) {
         expect(err).to.not.be.ok();
 
@@ -88,7 +88,7 @@ describe('remote', function(){
           expect(err).to.not.be.ok();
 
           remote.build(address, 'test-env', {
-            INPUT: "NOT OK"
+            env { INPUT: "NOT OK" },
           }, function (err, result) {
             expect(err).to.be.ok();
 

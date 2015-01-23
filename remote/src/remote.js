@@ -5,6 +5,7 @@ var cp = require('child_process');
 var msgpack = require('msgpack')
 var nano = require('nanomsg');
 var myip = require('my-ip');
+var docopt = require('docopt');
 
 var rpackc = require('./rpackc');
 
@@ -32,11 +33,14 @@ function readPlan (plan) {
   return yaml.safeLoad(fs.readFileSync(path.join('./plan', plan + '.yaml'), 'utf8'));
 }
 
-function build (addr, plan, env, onresult) {
-  if (!env) {
-    onresult = env;
-    env = {};
+function build (addr, plan, opts, onresult) {
+  if (!opts) {
+    onresult = opts;
+    opts = {};
   }
+
+  var env = opts.env || {};
+  var prompt = opts.prompt;
 
   if (!addr) {
     throw new Error('Expected connection address, received ' + String(addr));
@@ -72,14 +76,28 @@ function build (addr, plan, env, onresult) {
     },
     'process_exit': function (rpc, ret) {
       exitcode = ret.code;
-      if (ret.code) {
-        rpc.send('exit');
-      } else {
-        rpc.send('download', {
-          source: '/result/result.tar.gz',
-          bucket: 'tusk',
-          path: plan + '.tar.gz',
+      if (prompt) {
+        process.stdin.resume();
+        process.stdin.once('data', function () {
+          console.error('Continuing...');
+          process.stdin.pause();
+          next();
         });
+        process.stderr.write('Hit [RETURN] to terminate (exited with ' + ret.code + ')...');
+      } else {
+        next();
+      }
+
+      function next () {
+        if (ret.code) {
+          rpc.send('exit');
+        } else {
+          rpc.send('download', {
+            source: '/result/result.tar.gz',
+            bucket: 'tusk',
+            path: plan + '.tar.gz',
+          });
+        }
       }
     },
     'download_ready': function (rpc, result) {
@@ -95,25 +113,31 @@ exports.requestServer = requestServer;
 exports.build = build;
 
 if (require.main == module) {
-  var argv = require('minimist')(process.argv.slice(2), {'--': true})
+  var doc = "\
+Usage: remote <plan_name> [-e ENV]... [options]\n\
+\n\
+Options:\n\
+  -e, --env KEY=VALUE  Environment variable\n\
+  --prompt             Prompt to terminate VM.\n\
+  -h, --help           Show this screen.\
+";
 
-  if (!argv._[0]) {
-    console.error('Usage: remote openwrt -e ENV=value');
-    process.exit(1);
-  }
-  
-  var name = argv._[0];
+  var argv = require('docopt').docopt(doc);
+
+  var name = argv['<plan_name>'];
   var env = {};
-  (argv.e ? (typeof argv.e == 'string' ? [argv.e] : argv.e) : [])
-    .forEach(function (e) {
-      var split = e.split(/=(.+)?/, 2);
-      env[split[0]] = split[1] || "";
-    });
+  argv['--env'].forEach(function (e) {
+    var split = e.split(/=(.+)?/, 2);
+    env[split[0]] = split[1] || "";
+  });
 
   console.log('Running:', name, env);
 
   requestServer(name, function (err, address) {
-    build(address, name, env, function (err, result) {
+    build(address, name, {
+      env: env,
+      prompt: !!argv['--prompt'],
+    }, function (err, result) {
       console.log('exit', err);
       console.log(result);
       process.on('exit', function () {
