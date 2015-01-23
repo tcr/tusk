@@ -1,5 +1,6 @@
-- sudo mkdir -p /work
-- uname -a | sudo tee /work/uname
+build:
+    - sudo mkdir -p /work
+    - uname -a | sudo tee /work/uname
 
-- sudo mkdir -p /result
-- sudo tar -czvf /result/result.tar.gz -C /work .
+    - sudo mkdir -p /result
+    - sudo tar -czvf /result/result.tar.gz -C /work .

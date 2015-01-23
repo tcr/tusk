@@ -30,11 +30,11 @@ function requestServer (name, onallocation) {
 }
 
 function readPlan (plan) {
-  return yaml.safeLoad(fs.readFileSync(path.join('./plan', plan + '.yaml'), 'utf8'));
+  return yaml.safeLoad(fs.readFileSync(path.join('./plan', plan + '.yaml'), 'utf8')).build || [];
 }
 
 function build (addr, plan, opts, onresult) {
-  if (!opts) {
+  if (!onresult) {
     onresult = opts;
     opts = {};
   }
