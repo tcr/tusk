@@ -6,6 +6,7 @@ var msgpack = require('msgpack')
 var nano = require('nanomsg');
 var myip = require('my-ip');
 var docopt = require('docopt');
+var crypto = require('crypto');
 
 var rpackc = require('./rpackc');
 
@@ -31,6 +32,12 @@ function requestServer (name, onallocation) {
 
 function readPlan (plan) {
   return yaml.safeLoad(fs.readFileSync(path.join('./plan', plan + '.yaml'), 'utf8')).build || [];
+}
+
+function sha1 (value) {
+  var shasum = crypto.createHash('sha1');
+  shasum.update(value);
+  return shasum.digest('hex');
 }
 
 function build (addr, plan, opts, onresult) {
@@ -97,7 +104,7 @@ function build (addr, plan, opts, onresult) {
           rpc.send('download', {
             source: '/result/result.tar.gz',
             bucket: 'tusk',
-            path: plan + '.tar.gz',
+            path: sha1(plan) + '.tar.gz',
           });
         }
       }

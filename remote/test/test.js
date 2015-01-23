@@ -6,6 +6,8 @@ var path = require('path');
 var fs = require('fs');
 var assert = require('assert');
 var expect = require('chai').expect;
+var request = require('request');
+var crypto = require('crypto');
 require('mocha-steps');
 
 var remote = require('../src/remote');
@@ -20,10 +22,10 @@ function collect (stream, next) {
   })
 }
 
-function parsetar (result, next) {
+function parsetar (stream, next) {
   try {
     var success = false;
-    fs.createReadStream(result.path)
+    stream
       .pipe(zlib.createGunzip())
       .pipe(tar.Parse())
       .on('entry', function (entry) {
@@ -44,10 +46,18 @@ function parsetar (result, next) {
   }
 }
 
+function sha1 (value) {
+  var shasum = crypto.createHash('sha1');
+  shasum.update(value);
+  return shasum.digest('hex');
+}
+
 // Tests
 
 describe('remote', function(){
   this.timeout(5*60*1000);
+
+  var unameResult = null;
 
   step('should run uname on linux', function (done) {
     remote.requestServer('test-uname', function (err, address) {
@@ -58,6 +68,26 @@ describe('remote', function(){
         expect(result).to.have.property('available').that.is.ok();
         expect(result).to.have.property('size').that.is.a('number');
         expect(result).to.have.property('url').that.is.a('string');
+
+        unameResult = result.url;
+
+        done();
+      })
+    });
+  });
+
+  step('should result in a sha1 hash of input', function (done) {
+    expect(path.basename(unameResult)).to.equal(sha1('test-uname'));
+  });
+
+  step('should result in a public tar.gz file', function (done) {
+    request(unameResult, function (err, stream) {
+      expect(err).to.not.be.ok();
+
+      parsetar(stream, function (err, uname) {
+        expect(err).to.not.be.ok();
+        expect(uname).to.be.a('string').and.to.match(/Linux/i);
+
         done();
       })
     });

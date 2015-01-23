@@ -27,7 +27,6 @@ def run_command(ssh, rpc, cmd, env = {}):
     for k,v in env.items():
         cmd = 'export {}={}; {}'.format(bytes(k).decode('utf-8'), shlex.quote(bytes(v).decode('utf-8')), cmd)
     chan.exec_command(cmd)
-    print(cmd)
 
     # flush all data.
     exit_ready = False
