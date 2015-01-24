@@ -1,2 +1,2 @@
 build:
-    - exit 42
+  - exit 42

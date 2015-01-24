@@ -1,3 +1,4 @@
+import os
 import queue
 import atexit
 from src import agent, vagrant, paths, config
@@ -6,8 +7,8 @@ from threading import Thread, Lock
 def opt_makedirs(path):
     try:
         os.makedirs(path)
-    except Exception:
-        pass
+    except Exception as e:
+    	pass
 
 opt_makedirs(paths.config) # make config path
 opt_makedirs(paths.vms) # make VM path
