@@ -1,6 +1,5 @@
 build:
-    - sudo mkdir -p /work
-    - uname -a | sudo tee /work/uname
+  - mkdir -p /tusk/work
+  - uname -a | sudo tee /tusk/work/uname
 
-    - sudo mkdir -p /result
-    - sudo tar -czvf /result/result.tar.gz -C /work .
+  - tar -czvf /tusk/result/result.tar.gz -C /tusk/work .

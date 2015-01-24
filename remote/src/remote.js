@@ -7,6 +7,7 @@ var nano = require('nanomsg');
 var myip = require('my-ip');
 var docopt = require('docopt');
 var crypto = require('crypto');
+var shellescape = require('shell-escape');
 
 var rpackc = require('./rpackc');
 
@@ -31,7 +32,7 @@ function requestServer (name, onallocation) {
 }
 
 function readPlan (plan) {
-  return yaml.safeLoad(fs.readFileSync(path.join('./plan', plan + '.yaml'), 'utf8')).build || [];
+  return yaml.safeLoad(fs.readFileSync(path.join('./plan', plan + '.yaml'), 'utf8')) || {};
 }
 
 function sha1 (value) {
@@ -54,7 +55,8 @@ function build (addr, plan, opts, onresult) {
   }
 
   // Get document, or throw exception on error
-  var steps = readPlan(plan);
+  var planyaml = readPlan(plan);
+  var steps = planyaml.build || [];
 
   console.log(arguments)
 
@@ -64,19 +66,47 @@ function build (addr, plan, opts, onresult) {
 
   rpc.keepalive(3000);
 
+  var input = planyaml.input || {};
+  var inputcmds = Object.keys(input).map(function (key) {
+    return shellescape(['echo', input[key]]) + ' | ' + shellescape(['tee', '/tusk/input/' + key]);
+  });
+
   var download = null, exitcode = 0;
-  rpc.use({
-    'start': function (rpc) {
-      rpc.send('process_start', {
-        commands: steps,
-        env: env
-      });
-    },
+
+  var exitState = {
     'exit': function (rpc, result) {
       console.log('exit');
       rpc.close();
       onresult(exitcode, download);
     },
+  };
+
+  var initialState = {
+    'start': function (rpc) {
+      rpc.send('process_start', {
+        commands: [
+          'sudo mkdir -p /tusk && sudo chown -R $USER /tusk',
+          'mkdir -p /tusk/input',
+          'mkdir -p /tusk/result',
+        ].concat(inputcmds),
+        env: {}
+      });
+    },
+    'process_exit': function (rpc, ret) {
+      rpc.use(planState, exitState);
+
+      if (ret.code) {
+        rpc.send('exit');
+      } else {
+        rpc.send('process_start', {
+          commands: steps,
+          env: env
+        });
+      }
+    },
+  };
+
+  var planState = {
     'command_enter': function (rpc, ret) {
       console.log('$', ret.cmd);
     },
@@ -102,7 +132,7 @@ function build (addr, plan, opts, onresult) {
           rpc.send('exit');
         } else {
           rpc.send('download', {
-            source: '/result/result.tar.gz',
+            source: '/tusk/result/result.tar.gz',
             bucket: 'tusk',
             path: sha1(plan) + '.tar.gz',
           });
@@ -113,8 +143,9 @@ function build (addr, plan, opts, onresult) {
       download = result;
       rpc.send('exit');
     }
-  });
+  };
 
+  rpc.use(initialState, exitState);
   rpc.send('start');
 }
 

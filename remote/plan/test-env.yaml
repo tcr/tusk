@@ -1,5 +1,10 @@
+input:
+  some_data: OK
+
 build:
   - echo "$ENV_OK"
-  - if [[ "$ENV_OK" -eq "OK" ]]; then exit 0; else exit 1; fi
+  - '[[ "$ENV_OK" = "OK" ]]; exit $?'
   - echo "$ENV_NOT_OK"
-  - if [[ "$ENV_NOT_OK" -ne "OK" ]]; then exit 0; else exit 1; fi
+  - '[[ "$ENV_NOT_OK" != "OK" ]]; exit $?'
+  - cat /tusk/input/some_data
+  - '[[ "$(cat /tusk/input/some_data)" = "OK" ]]; exit $?'

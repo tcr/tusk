@@ -1,70 +1,70 @@
 build:
-    # Work folder
-    - sudo mkdir -p /work; sudo chown -R $USER /work
+  # Work folder
+  - sudo mkdir -p /work; sudo chown -R $USER /work
 
-    # Conflicting google stuff
-    - sudo rm -rf /usr/share/google/boto
+  # Conflicting google stuff
+  - sudo rm -rf /usr/share/google/boto
 
-    # http://www.binarytides.com/enable-testing-repo-debian/
-    - |
-        cat << EOF | sudo tee -a /etc/apt/sources.list
-        # Testing repository - main, contrib and non-free branches
-        deb http://http.us.debian.org/debian testing main non-free contrib
-        deb-src http://http.us.debian.org/debian testing main non-free contrib
-
-
-        # Testing security updates repository
-        deb http://security.debian.org/ testing/updates main contrib non-free
-        deb-src http://security.debian.org/ testing/updates main contrib non-free
+  # http://www.binarytides.com/enable-testing-repo-debian/
+  - |
+    cat << EOF | sudo tee -a /etc/apt/sources.list
+    # Testing repository - main, contrib and non-free branches
+    deb http://http.us.debian.org/debian testing main non-free contrib
+    deb-src http://http.us.debian.org/debian testing main non-free contrib
 
 
-        # Unstable repo main, contrib and non-free branches, no security updates here
-        deb http://http.us.debian.org/debian unstable main non-free contrib
-        deb-src http://http.us.debian.org/debian unstable main non-free contrib
-        EOF
-    - |
-        cat << EOF | sudo tee /etc/apt/preferences
-        Package: *
-        Pin: release a=stable
-        Pin-Priority: 700
+    # Testing security updates repository
+    deb http://security.debian.org/ testing/updates main contrib non-free
+    deb-src http://security.debian.org/ testing/updates main contrib non-free
 
-        Package: *
-        Pin: release a=testing
-        Pin-Priority: 650
 
-        Package: *
-        Pin: release a=unstable
-        Pin-Priority: 600
-        EOF
+    # Unstable repo main, contrib and non-free branches, no security updates here
+    deb http://http.us.debian.org/debian unstable main non-free contrib
+    deb-src http://http.us.debian.org/debian unstable main non-free contrib
+    EOF
+  - |
+    cat << EOF | sudo tee /etc/apt/preferences
+    Package: *
+    Pin: release a=stable
+    Pin-Priority: 700
 
-    - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
+    Package: *
+    Pin: release a=testing
+    Pin-Priority: 650
 
-    - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -t testing gcc python3.4 python3.4-venv python3.4-dev
-    - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y file bzip2 build-essential make git curl libnanomsg-dev zlib1g-dev
+    Package: *
+    Pin: release a=unstable
+    Pin-Priority: 600
+    EOF
 
-    - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -t testing vagrant
-    - vagrant plugin install vagrant-google
-    - vagrant box add gce https://github.com/mitchellh/vagrant-google/raw/master/google.box
+  - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
 
-    - mv ~/.vagrant.d/gems/gems/vagrant-google-0.1.4 ~/.vagrant.d/gems/gems/vagrant-google-0.1.4-bkp
-    - git clone https://github.com/tcr/vagrant-google ~/.vagrant.d/gems/gems/vagrant-google-0.1.4
+  - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -t testing gcc python3.4 python3.4-venv python3.4-dev
+  - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y file bzip2 build-essential make git curl libnanomsg-dev zlib1g-dev
 
-    - mkdir -p ~/.ssh; ssh-keygen -t rsa -N "" -f ~/.ssh/google_compute_engine
-    - gcloud compute config-ssh
+  - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y -t testing vagrant
+  - vagrant plugin install vagrant-google
+  - vagrant box add gce https://github.com/mitchellh/vagrant-google/raw/master/google.box
 
-    - curl -sL https://deb.nodesource.com/setup | sudo bash -
-    - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y nodejs npm
-    - sudo ln -s /usr/bin/nodejs /usr/bin/node
+  - mv ~/.vagrant.d/gems/gems/vagrant-google-0.1.4 ~/.vagrant.d/gems/gems/vagrant-google-0.1.4-bkp
+  - git clone https://github.com/tcr/vagrant-google ~/.vagrant.d/gems/gems/vagrant-google-0.1.4
 
-    - cd /work && git clone -b ${TUSK_BRANCH:-master} --single-branch http://$(cat ~/github.key || echo)github.com/tcr/tusk.git
+  - mkdir -p ~/.ssh; ssh-keygen -t rsa -N "" -f ~/.ssh/google_compute_engine
+  - gcloud compute config-ssh
 
-    - cd /work/tusk/agent && pyvenv-3.4 venv
-    - cd /work/tusk/agent && source venv/bin/activate && pip install -r requirements.txt
+  - curl -sL https://deb.nodesource.com/setup | sudo bash -
+  - yes | DEBIAN_FRONTEND=noninteractive sudo apt-get install -y nodejs npm
+  - sudo ln -s /usr/bin/nodejs /usr/bin/node
 
-    - mkdir -p /work/tusk/agent/config
-    - cp ~/gcloud.p12 /work/tusk/agent/config
-    - cp ~/tusk.yaml /work/tusk/agent/config
+  - cd /work && git clone -b ${TUSK_BRANCH:-master} --single-branch http://$(cat ~/github.key || echo)github.com/tcr/tusk.git
 
-    - cd /work/tusk/remote && npm install
+  - cd /work/tusk/agent && pyvenv-3.4 venv
+  - cd /work/tusk/agent && source venv/bin/activate && pip install -r requirements.txt
 
-    - cd /work/tusk && PATH=./node_modules/.bin:$PATH ./integration.sh
+  - mkdir -p /work/tusk/agent/config
+  - cp ~/gcloud.p12 /work/tusk/agent/config
+  - cp ~/tusk.yaml /work/tusk/agent/config
+
+  - cd /work/tusk/remote && npm install
+
+  - cd /work/tusk && PATH=./node_modules/.bin:$PATH ./integration.sh

@@ -73,7 +73,13 @@ RPC.prototype.getStream = function (target) {
   return this.streams[target]
 }
 
-RPC.prototype.use = function (handler) {
+RPC.prototype.use = function (/* handlers */) {
+  var handler = {};
+  Array.prototype.slice.apply(arguments).forEach(function (arg) {
+    for (var key in arg) {
+      handler[key] = arg[key];
+    }
+  });
   this.handler = handler;
 }
 
