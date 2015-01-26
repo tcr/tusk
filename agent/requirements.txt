@@ -6,6 +6,7 @@ clint==0.3.1
 coverage==3.7.1
 ecdsa==0.11
 expects==0.6.2
+humanize==0.5.1
 keyring==4.0
 mamba==0.8.3
 msgpack-python==0.4.4
