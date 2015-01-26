@@ -9,6 +9,7 @@ import signal
 import queue
 import msgpack
 import yaml
+import hashlib
 from nanomsg import Socket, PAIR, PUB, REP
 from threading import Thread, Lock
 from concurrent.futures import ThreadPoolExecutor
@@ -23,6 +24,18 @@ def handler(signum, frame):
     alive = False
 alive = True
 signal.signal(signal.SIGTERM, handler)
+
+
+def vagrant_env(name=None):
+    overlay = {}
+    config = tusk()
+    if config.get('gcloud'):
+        overlay['GCLOUD_PROJECT_ID'] = config['gcloud'].get('project_id')
+        overlay['GCLOUD_CLIENT_EMAIL'] = config['gcloud'].get('client_email')
+        overlay['GCLOUD_PRIVILEGED'] = "1" if config['gcloud'].get('privileged') else "0"
+    if name != None:
+        overlay['GCLOUD_INSTANCE_NAME'] = 'tusk-{}'.format(hashlib.sha1(name).hexdigest())
+    return overlay
 
 
 def vm_exists(a):
@@ -58,11 +71,11 @@ def mp_consumer(inq, outq):
             continue
 
         vm_init(name)
-        if vagrant.up(name, config.env()):
+        if vagrant.up(name, vagrant_env(name)):
             outq.put(
                 {"status": False, "error": "Could not initialize VM.", "retry": True})
         else:
-            ssh_config = vagrant.ssh_config(name, config.env())
+            ssh_config = vagrant.ssh_config(name, vagrant_env(name))
             if not ssh_config:
                 outq.put(
                     {"status": False, "error": "Could not retrieve SSH config.", "retry": True})
@@ -87,7 +100,7 @@ def mp_consumer(inq, outq):
                 except:
                     traceback.print_exc()
 
-        vagrant.destroy(name, config.env())
+        vagrant.destroy(name, vagrant_env(name))
         vm_clean(name)
 
         # TO CHECK DISK IS ASLEEP
@@ -103,7 +116,7 @@ def mp_clean():
     print(clean)
     if len(clean):
         for vm in clean:
-            vagrant.destroy(vm, config.env())
+            vagrant.destroy(vm, vagrant_env(name))
             vm_clean(vm)
         # with ThreadPoolExecutor(max_workers=4) as pool:
         #     print('Cleaning', clean)
