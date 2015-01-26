@@ -14,6 +14,7 @@ from threading import Thread, Lock
 from concurrent.futures import ThreadPoolExecutor
 from . import vagrant, paths, ssh, config
 
+
 def handler(signum, frame):
     global alive
     print('^C shutting down python agent')

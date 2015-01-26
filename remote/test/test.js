@@ -121,4 +121,19 @@ describe('remote', function(){
       });
     });
   });
+
+  step('should upload large file with boto', function (done) {
+    remote.requestServer('test-big', function (err, address) {
+      expect(err).to.not.be.ok();
+
+      remote.build(address, 'test-big', function (err, result) {
+        expect(err).to.equal(0);
+        expect(result).to.have.property('available').that.is.ok();
+        expect(result).to.have.property('size').that.is.a('number');
+        expect(result).to.have.property('url').that.is.a('string');
+
+        done();
+      })
+    });
+  });
 });

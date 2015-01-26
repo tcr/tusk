@@ -1,0 +1,2 @@
+build:
+  - fallocate -l 10M /tusk/result/result.tar.gz

@@ -71,6 +71,13 @@ function build (addr, plan, opts, onresult) {
     return shellescape(['echo', input[key]]) + ' | ' + shellescape(['tee', '/tusk/input/' + key]);
   });
 
+  var deps = planyaml.dependencies || {};
+  var depcmds = Object.keys(deps).map(function (key) {
+    return shellescape(['echo', 'https://storage.googleapis.com/tusk/' + sha1(key) + '.tar.gz']) +
+      ' | ' +
+      shellescape(['tee', '/tusk/dependencies/' + key]);
+  });
+
   var download = null, exitcode = 0;
 
   var exitState = {
@@ -88,7 +95,8 @@ function build (addr, plan, opts, onresult) {
           'sudo mkdir -p /tusk && sudo chown -R $USER /tusk',
           'mkdir -p /tusk/input',
           'mkdir -p /tusk/result',
-        ].concat(inputcmds),
+          'mkdir -p /tusk/dependencies',
+        ].concat(inputcmds, depcmds),
         env: {}
       });
     },
@@ -151,38 +159,3 @@ function build (addr, plan, opts, onresult) {
 
 exports.requestServer = requestServer;
 exports.build = build;
-
-if (require.main == module) {
-  var doc = "\
-Usage: remote <plan_name> [-e ENV]... [options]\n\
-\n\
-Options:\n\
-  -e, --env KEY=VALUE  Environment variable\n\
-  --prompt             Prompt to terminate VM.\n\
-  -h, --help           Show this screen.\
-";
-
-  var argv = require('docopt').docopt(doc);
-
-  var name = argv['<plan_name>'];
-  var env = {};
-  argv['--env'].forEach(function (e) {
-    var split = e.split(/=(.+)?/, 2);
-    env[split[0]] = split[1] || "";
-  });
-
-  console.log('Running:', name, env);
-
-  requestServer(name, function (err, address) {
-    build(address, name, {
-      env: env,
-      prompt: !!argv['--prompt'],
-    }, function (err, result) {
-      console.log('exit', err);
-      console.log(result);
-      process.on('exit', function () {
-        process.exit(err);
-      })
-    })
-  });
-}
