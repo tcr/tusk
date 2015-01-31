@@ -1,0 +1,9 @@
+node_modules/
+**/Vagrantfile
+config/
+*.log
+*.pycx
+vm/
+plan/*.yml
+**/tusk_upload.yml
+

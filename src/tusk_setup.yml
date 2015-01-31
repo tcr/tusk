@@ -1,0 +1,29 @@
+sudo: true
+
+pre_tasks:
+  - apt: update_cache=yes cache_valid_time=86400
+
+#roles:
+#  - nodesource.node
+
+tasks:
+  - name: make tusk work folder
+    file: path=/tusk state=directory owner=tim
+  - name: make result folder
+    file: path=/tusk/result state=absent owner=tim
+  - name: make input folder
+    file: path=/tusk/dependencies state=directory owner=tim
+  - name: mount ramdisk
+    mount: fstype=tmpfs name=/tusk/work src=tmpfs opts="size=40G" state=mounted
+
+  - name: ensure github.com is a known host
+    lineinfile:
+      dest: /home/tim/.ssh/known_hosts
+      create: yes
+      state: present
+      line: "{{ lookup('pipe', 'ssh-keyscan -t rsa github.com') }}"
+      regexp: "^github\\.com"
+
+  - name: install git
+    apt: name=git
+
