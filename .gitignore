@@ -3,7 +3,7 @@ node_modules/
 config/
 *.log
 *.pycx
-vm/
+vms/
 plan/*.yml
 **/tusk_upload.yml
 

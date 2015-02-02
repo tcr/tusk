@@ -3,29 +3,43 @@
 var fs = require('fs');
 var crypto = require('crypto');
 var yaml = require('js-yaml');
+var check = require('./check');
+var Promise = require('bluebird');
+var util = require('./util');
 
-if (require.main === module) {
-  if (process.argv.length < 3) {
-    console.error('Usage: playbook.js name');
-    process.exit(1);
+function getPlan (name) {
+  return yaml.safeLoad(fs.readFileSync(__dirname + '/../plan/' + name + '.yml'));
+}
+
+function status (name, next) {
+  var deps = (getPlan(name).build || {}).dependencies || [];
+  Promise.map(deps, function (dep) {
+    return Promise.promisify(check.check)(dep);
+  }).nodeify(next);
+}
+
+function dependencyRef (k) {
+  if (typeof k == 'string') {
+    return {id: k};
+  } else {
+    var id = Object.keys(k).pop();
+    var ref = {};
+    Object.keys(k[id]).forEach(function (key) {
+      ref[key] = String(k[id][key]);
+    })
+    ref.id = id;
+    return name;
   }
-
-  var name = process.argv[2];
-  console.log(generate(name));
 }
 
-function sha1 (value) {
-  var shasum = crypto.createHash('sha1');
-  shasum.update(value);
-  return shasum.digest('hex');
-}
-
-function generate (name) {
-  var sha = sha1(name);
+function generate (ref) {
+  var sha = util.refSha(ref);
+  console.log('Generating playbook for', ref);
+  console.log('sha=', sha);
 
   var setup = yaml.safeLoad(fs.readFileSync(__dirname + '/tusk_setup.yml'));
   var upload = yaml.safeLoad(fs.readFileSync(__dirname + '/tusk_upload.yml'));
-  var openwrt = yaml.safeLoad(fs.readFileSync(__dirname + '/../plan/' + name + '.yml'));
+  var openwrt = getPlan(ref.id);
 
   setup['hosts'] = 'all';
 
@@ -33,28 +47,32 @@ function generate (name) {
     setup,
     {
       "hosts": "all",
+      "vars": util.clone(ref),
       "tasks": [].concat.apply([], (openwrt.build.dependencies || []).map(function (k) {
-        k = String(k);
+        var ref = dependencyRef(k);
+        var sha = util.refSha(ref);
+
+        console.error('(ref:', ref, ')');
         return [
           {
-            "name": "download " + k,
+            "name": "download " + k.id,
             "get_url": {
-              "url": 'https://storage.googleapis.com/tusk/' + sha1(k) + '.tar.gz',
-              "dest": '/tmp/' + k + '.tar.gz'
+              "url": 'https://storage.googleapis.com/tusk/' + sha + '.tar.gz',
+              "dest": '/tmp/' + sha + '.tar.gz'
             },
           },
           {
-            "name": "make " + k + " directory",
+            "name": "make " + ref.id + " directory",
             "file": {
-              "path": "/tusk/dependencies/" + k,
+              "path": "/tusk/dependencies/" + ref.id,
               "state": "directory",
             },
           },
           {
-            "name": "extract " + k,
+            "name": "extract " + ref.id,
             "unarchive": {
-              "src": "/tmp/" + k + ".tar.gz",
-              "dest": "/tusk/dependencies/" + k,
+              "src": "/tmp/" + sha + ".tar.gz",
+              "dest": "/tusk/dependencies/" + ref.id,
               "copy": false,
             },
           }
@@ -63,43 +81,79 @@ function generate (name) {
     },
     {
       "hosts": "all",
+      "vars": util.clone(ref),
       "tasks": openwrt.build.source ? (function (repo) {
-        return [{
-          "name": "download " + repo,
+        var source = typeof repo == 'string' ? repo : repo.repo;
+        var commit = typeof repo == 'string' ? repo.split('#')[1] || 'master' : repo.commit;
+        return [
+        {
+          "name": "require git",
+          "apt": "name=git",
+        },
+        {
+          "name": "download " + source + '#' + commit,
           "git": {
-            "repo": repo.split("#")[0] || '',
+            "repo": source,
             "dest": "/tusk/source",
             "recursive": false,
-            version: repo.split('#')[1] || 'master',
+            version: commit,
           },
         }, {
-          "name": "download " + repo,
+          "name": "download " + source + '#' + commit,
           "git": {
-            "repo": repo.split("#")[0] || '',
+            "repo": source,
             "dest": "/tusk/source",
             "recursive": true,
-            version: repo.split('#')[1] || 'master',
+            version: commit,
           },
         }];
       })(openwrt.build.source) : []
     },
     {
       "hosts": "all",
+      "vars": util.clone(ref),
       "tasks": openwrt['build'].setup || [],
     },
     {
       "hosts": "all",
+      "vars": util.clone(ref),
       "tasks": openwrt['build'].tasks || [],
     },
     {
       "hosts": "all",
       "sudo": true,
-      "vars": {
+      "vars": util.combine(ref, {
         "sha": sha
-      },
+      }),
       "tasks": upload,
     },
   ])
 }
 
+exports.status = status;
 exports.generate = generate;
+
+// CLI
+
+if (require.main === module) {
+  if (process.argv.length < 3) {
+    console.error('Usage: playbook.js name');
+    process.exit(1);
+  }
+
+  var name = process.argv[2];
+
+  // Parse args
+  var input = {};
+  for (var i = 0; i < process.argv.length; i++) {
+    if (process.argv[i] == '-i') {
+      var def = process.argv[++i];
+      if (def && def.indexOf("=") > -1) {
+        var _ = def.split("="), k = _[0], v = _[1];
+        input[k] = v;
+      }
+    }
+  }
+
+  console.log(generate(name, input));
+}

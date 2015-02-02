@@ -23,7 +23,3 @@ tasks:
       state: present
       line: "{{ lookup('pipe', 'ssh-keyscan -t rsa github.com') }}"
       regexp: "^github\\.com"
-
-  - name: install git
-    apt: name=git
-

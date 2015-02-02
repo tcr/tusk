@@ -2,67 +2,124 @@
 
 var wrench = require('wrench');
 var fs = require('fs');
-var playbook = require('./playbook');
 var spawn = require('child_process').spawn;
+var Promise = require('bluebird');
+var Set = require('es6-set');
+var Map = require('es6-map');
+var docopt = require('docopt').docopt;
+var path = require('path');
 
-function vagrantup (cwd, next) {
-  var p = spawn('vagrant', ['up', '--provider=google', '--no-provision'], {
-    cwd: cwd,
-    stdio: "inherit",
-  });
-  p.on('error', next);
-  p.on('exit', next);
+var playbook = require('./playbook');
+var vagrant = require('./vagrant');
+var util = require('./util');
+
+var root = path.join(__dirname, '/../vms');
+
+function clean (sha) {
+  var vm = path.join(root, sha);
+
+  return Promise.promisify(fs.exists)(vm)
+    .catch(function () {
+      console.log('GCing', sha);
+      return vagrant.destroy(vm)
+        .then(function (oh) {
+          console.log('ok');
+          return Promise.promisify(wrench.rmdirRecursive)(vm);
+        });
+    })
 }
 
-function vagrantprovision (cwd, next) {
-  var p = spawn('vagrant', ['provision'], {
-    cwd: cwd,
-    stdio: "inherit",
-  });
-  p.on('error', next);
-  p.on('exit', next);
+function reset (next) {
+  wrench.mkdirSyncRecursive(root);
+  return Promise.map(fs.readdirSync(root), clean)
+    .nodeify(next);
 }
 
-function vagrantdestroy (cwd, next) {
-  var p = spawn('vagrant', ['destroy', '-f'], {
-    cwd: cwd,
-    stdio: "inherit",
-  });
-  p.on('error', next);
-  p.on('exit', next);
+var buildingState = new Map();
+
+function isBuilding (ref) {
+  return buildingState.has(util.refSha(ref))
 }
 
-if (require.main === module) {
-  if (process.argv.length < 3) {
-    console.error('Usage: playbook.js name');
-    process.exit(1);
+function build (ref, next) {
+  var sha = util.refSha(ref);
+  var cwd = __dirname + '/../vms/' + sha;
+  var play = playbook.generate(ref);
+
+  if (isBuilding(ref)) {
+    return buildingState.get(util.refSha(ref)).nodeify(next);
   }
 
-  var name = process.argv[2];
-
-  var cwd = __dirname + '/../vm';
-  vagrantdestroy(cwd, function (code) {
-    wrench.rmdirSyncRecursive(__dirname + '/../vm', true);
-    wrench.copyDirSyncRecursive(__dirname + '/../template', __dirname + '/../vm')
-
-    fs.writeFileSync(__dirname + '/../vm/playbook.yml', playbook.generate(name), 'utf-8');
-
-    vagrantup(cwd, function (code) {
-      console.log('up:', code);
-      if (code) { process.exit(code) }
-
-      vagrantprovision(cwd, function (code) {
-        console.log('provision:', code)
-        if (code) { process.exit(code) }
-
-        vagrantdestroy(cwd, function (code) {
-          console.log('destroy:', code)
-          if (code) { process.exit(code) }
-
-          wrench.rmdirSyncRecursive(cwd);
-          console.log('done');
-        });
+  var promise = 
+  Promise.promisify(playbook.status)(ref.id)
+  .catch(function (err) {
+    buildingState.delete(sha);
+    return Promise.reject(new Error('Dependency for `' + ref.id + '` missing:\n' + err.message));
+  })
+  .then(function () {
+    console.error('Starting build', sha);
+    return clean(sha);
+  })
+  .then(function () {
+    wrench.rmdirSyncRecursive(cwd, true);
+    wrench.copyDirSyncRecursive(__dirname + '/../template', cwd)
+    fs.writeFileSync(cwd + '/playbook.yml', play, 'utf-8');
+  })
+  .then(function () {
+    console.log('up');
+    return vagrant.up(cwd);
+  })
+  .then(function () {
+    console.log('provision')
+    return vagrant.provision(cwd);
+  })
+  .finally(function () {
+    console.log('destroy');
+    return vagrant.destroy(cwd)
+      .then(function () {
+        wrench.rmdirSyncRecursive(cwd);
+        console.log('done');
       })
+      .finally(function () {
+        buildingState.delete(sha);
+      })
+  })
+  .nodeify(next);
+
+  buildingState.set(sha, promise);
+
+  return promise;
+}
+
+// CLI
+
+if (require.main === module) {
+  var doc = '\
+Usage: generate <id> [--input=<arg>]...\n\
+\n\
+Options:\n\
+  -i, --input=<arg>      Input variable.';
+
+  var opts = docopt(doc);
+
+  // Parse args into ref spec
+  var ref = {};
+  opts['--input'].forEach(function (def) {
+    var _ = def.split("="), k = _[0] || '', v = _[1] || '';
+    ref[k] = v;
+  });
+  ref.id = opts['<id>'];
+
+  // Reset, build, love
+  reset(function (code) {
+    build(ref, function (err) {
+      console.log('Build process finished.');
+      if (err) {
+        console.error(err.message);
+        process.on('exit', function () {
+          process.exit(1);
+        })
+      }
     })
   });
 }
