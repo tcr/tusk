@@ -16,11 +16,11 @@ var root = path.join(__dirname, '/../vms');
 
 function vagrantenv (sha) {
   var conf = config.read();
-  return {
-    TUSK_NAME: 'tusk-' + sha,
-    TUSK_PROJECT_ID: conf.gcloud.project_id,
-    TUSK_CLIENT_EMAIL: conf.gcloud.client_email,
-  };
+  return [
+    'TUSK_NAME=tusk-' + sha,
+    'TUSK_PROJECT_ID=' + conf.gcloud.project_id,
+    'TUSK_CLIENT_EMAIL=' + conf.gcloud.client_email,
+  ].join('\n');
 }
 
 function clean (sha) {
@@ -29,9 +29,7 @@ function clean (sha) {
   return Promise.promisify(fs.exists)(vm)
     .catch(function () {
       console.log('GCing', sha);
-      return vagrant.destroy(vm, {
-          env: vagrantenv(sha),
-        })
+      return vagrant.destroy(vm)
         .then(function (oh) {
           console.log('ok');
           return Promise.promisify(wrench.rmdirRecursive)(vm);
@@ -80,18 +78,15 @@ function build (ref, opts, next) {
       wrench.rmdirSyncRecursive(cwd, true);
       wrench.copyDirSyncRecursive(__dirname + '/../template', cwd)
       fs.writeFileSync(cwd + '/playbook.yml', play, 'utf-8');
+      fs.writeFileSync(cwd + '/.env', vagrantenv(sha), 'utf-8');
     })
     .then(function () {
       console.log('up');
-      return vagrant.up(cwd, {
-        env: vagrantenv(sha),
-      });
+      return vagrant.up(cwd);
     })
     .then(function () {
       console.log('provision')
-      return vagrant.provision(cwd, {
-        env: vagrantenv(sha),
-      });
+      return vagrant.provision(cwd);
     })
     .then(function () {
       return storage.exists(ref);
@@ -103,9 +98,7 @@ function build (ref, opts, next) {
       }
 
       console.error('destroy');
-      return vagrant.destroy(cwd, {
-          env: vagrantenv(sha),
-        })
+      return vagrant.destroy(cwd)
         .then(function () {
           wrench.rmdirSyncRecursive(cwd);
           console.log('done');

@@ -4,3 +4,4 @@ config/
 *.pycx
 vms/
 custom/
+.env

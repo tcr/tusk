@@ -20,6 +20,7 @@ Usage:\n\
   tusk -h | --help\n\
 \n\
 Options:\n\
+  -f, --force            Force action.\n\
   -i, --input=<arg>      Input variable.\n\
   -m, --match=<arg>      Match resources.';
 

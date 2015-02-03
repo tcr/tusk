@@ -29,6 +29,9 @@ build:
         - vagrant
         - gcc
 
+    - name: install vagrant-env
+      run: cmd="vagrant plugin install vagrant-env"
+
     - name: install vagrant-google
       run: cmd="vagrant plugin install vagrant-google"
     - name: install vagrant-google box
@@ -63,3 +66,6 @@ build:
       run: cd="/tusk/work" cmd="npm install"
     - name: self-test
       run: cd="/tusk/work" cmd="./src/cli.js build test-a --force"
+
+    - name: completion
+      run: cmd="mkdir /tusk/result && echo success | tee -a /tusk/result/selftest"
