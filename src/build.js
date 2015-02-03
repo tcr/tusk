@@ -9,7 +9,7 @@ var path = require('path');
 var playbook = require('./playbook');
 var vagrant = require('./vagrant');
 var util = require('./util');
-var check = require('./check');
+var storage = require('./storage');
 
 var root = path.join(__dirname, '/../vms');
 
@@ -78,7 +78,7 @@ function build (ref, next) {
       });
     })
     .then(function () {
-      return Promise.promisify(check.check)(ref);
+      return storage.exists(ref);
     })
     .finally(function () {
       console.log('destroy');

@@ -41,7 +41,7 @@ function gc_storage (object, mode, next) {
 }
 
 // Check if a ref is already compiled.
-function check (ref, next) {
+function exists (ref, next) {
   return gc_storage(util.refSha(ref) + ".tar.gz", "get_url")
     .then(function (result) {
       return result.url;
@@ -54,5 +54,5 @@ function destroy (ref, next) {
     .nodeify(next);
 }
 
-exports.check = check;
+exports.exists = exists;
 exports.destroy = destroy;

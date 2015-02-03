@@ -5,9 +5,10 @@ var crypto = require('crypto');
 var yaml = require('js-yaml');
 var Map = require('es6-map');
 
-var check = require('./check');
+var storage = require('./storage');
 var Promise = require('bluebird');
 var util = require('./util');
+var config = require('./config');
 
 function getPlan (name) {
   return yaml.safeLoad(fs.readFileSync(__dirname + '/../plan/' + name + '.yml'));
@@ -107,7 +108,7 @@ function outputDependencyTree (tree) {
 function status (id, next) {
   Promise.map(getImmediateDependencies(id), function (ref) {
     console.log(' - checking for', ref);
-    return Promise.promisify(check.check)(ref);
+    return storage.exists(ref);
   }).nodeify(next);
 }
 
@@ -209,8 +210,11 @@ function generate (ref) {
     {
       "hosts": "all",
       "sudo": true,
-      "vars": util.combine(ref, {
+      "vars": util.combine(util.combine(ref, {
         "sha": sha
+      }), {
+        gs_access_key: config.read().gstorage.key,
+        gs_secret_key: config.read().gstorage.secret,
       }),
       "tasks": upload,
     },
