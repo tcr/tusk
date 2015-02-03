@@ -4,6 +4,7 @@ var fs = require('fs');
 var crypto = require('crypto');
 var yaml = require('js-yaml');
 var Map = require('es6-map');
+var colors = require('colors/safe');
 
 var storage = require('./storage');
 var Promise = require('bluebird');
@@ -87,22 +88,54 @@ function yamlRef (ref) {
   return yaml.safeDump(k).trim();
 }
 
-function outputDependencyTree (tree) {
-  // Convert graph to tree
-  var arch = {
-    label: yamlRef(tree.root),
-    nodes: (function nodes (sha) {
-      return tree.graph.outgoingEdges[sha].map(function (depsha) {
-        var ref = tree.map.get(depsha);
-        var subnodes = nodes(depsha);
-        var label = yamlRef(ref);
-        return subnodes.length
-          ? { label: label, nodes: subnodes }
-          : label;
-      });
-    })(util.refSha(tree.root)),
+function outputDependencyTree (tree, opts, next) {
+  if (typeof opts == 'function') {
+    next = opts;
+    opts = {};
   }
-  return require('archy')(arch);
+  opts = opts || {};
+
+  var start;
+  if (opts.detail) {
+    var hash = {};
+    Object.keys(tree.graph.nodes).forEach(function (sha) {
+      hash[sha] = storage.exists(tree.map.get(sha))
+        .catch(function () {
+          return Promise.resolve(null);
+        });
+    });
+
+    start = Promise.props(hash)
+      .then(function (results) {
+        var cached = new Map();
+        Object.keys(results).forEach(function (key) {
+          cached.set(key, !!results[key]);
+        });
+        return cached;
+      })
+  } else {
+    start = Promise.resolve(new Map());
+  }
+
+  return start
+    .then(function (cached) {
+      // Convert graph to tree
+      var arch = {
+        label: yamlRef(tree.root).replace(/(\n|$)/, cached.get(util.refSha(tree.root)) ? colors.green(' # cached') + '$1' : '$1'),
+        nodes: (function nodes (sha) {
+          return tree.graph.outgoingEdges[sha].map(function (depsha) {
+            var ref = tree.map.get(depsha);
+            var subnodes = nodes(depsha);
+            var label = yamlRef(ref).replace(/(\n|$)/, cached.get(depsha) ? colors.green(' # cached') + '$1' : '$1');
+            return subnodes.length
+              ? { label: label, nodes: subnodes }
+              : label;
+          });
+        })(util.refSha(tree.root)),
+      }
+      return require('archy')(arch).trim();
+    })
+    .nodeify(next);
 }
 
 function status (id, next) {

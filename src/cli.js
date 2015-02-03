@@ -15,7 +15,7 @@ if (require.main === module) {
 Usage:\n\
   tusk build <id> [--input=<arg>]... [--force] [--preserve]\n\
   tusk cache <id> [--input=<arg>]... [--delete] [--force]\n\
-  tusk dependencies <id>\n\
+  tusk dependencies <id> [--detail]\n\
   tusk resources [--match=<arg>]...\n\
 \n\
 Options:\n\
@@ -103,7 +103,12 @@ Options:\n\
   if (opts.dependencies) {
     playbook.getDependencies(ref)
     .then(function (tree) {
-      console.log(playbook.outputDependencyTree(tree));
+      playbook.outputDependencyTree(tree, {
+          detail: opts['--detail']
+        })
+        .then(function (art) {
+          console.log(art);
+        });
     })
   }
 
