@@ -11,15 +11,18 @@ var vagrant = require('./vagrant');
 var util = require('./util');
 var config = require('./config');
 var storage = require('./storage');
+var quota = require('./quota');
+
 
 var root = path.join(__dirname, '/../vms');
 
-function vagrantenv (sha) {
+function vagrantenv (sha, zone) {
   var conf = config.read();
   return [
     'TUSK_NAME=tusk-' + sha,
     'TUSK_PROJECT_ID=' + conf.gcloud.project_id,
     'TUSK_CLIENT_EMAIL=' + conf.gcloud.client_email,
+    'TUSK_ZONE=' + zone,
   ].join('\n');
 }
 
@@ -50,6 +53,49 @@ function isBuilding (ref) {
 }
 
 // Issues a build regardless of cached status.
+function allocate (ref) {
+  var sha = util.refSha(ref);
+  var cwd = __dirname + '/../vms/' + sha;
+  var play = playbook.generate(ref);
+
+  if (isBuilding(ref)) {
+    return buildingState.get(util.refSha(ref)).nodeify(next);
+  }
+
+  return Promise.promisify(playbook.status)(ref.id)
+    .catch(function (err) {
+      buildingState.delete(sha);
+      return Promise.reject(new Error('Dependency for `' + ref.id + '` missing:\n' + err.message));
+    })
+    .then(function () {
+      console.error('Starting build', sha);
+      return clean(sha)
+        .then(function () {
+          wrench.rmdirSyncRecursive(cwd, true);
+          wrench.copyDirSyncRecursive(__dirname + '/../template', cwd)
+          fs.writeFileSync(cwd + '/playbook.yml', play, 'utf-8');
+        })
+        .then(function () {
+          console.error('Seeking resources...');
+          return Promise.promisify(quota.query)({ cores: 16 })
+        })
+        .then(function (targets) {
+          if (targets.length == 0) {
+            return Promise.reject(new Error('No target found to run build.'));
+          }
+
+          var target = targets[0];
+          var zone = target.gcloud.region + '-' + target.gcloud.zone;
+          console.log('targeting', zone);
+          fs.writeFileSync(cwd + '/.env', vagrantenv(sha, zone), 'utf-8');
+        })
+        .then(function () {
+          console.log('up');
+          return vagrant.up(cwd);
+        });
+    });
+}
+
 function build (ref, opts, next) {
   if (typeof opts == 'function') {
     next = opts;
@@ -59,31 +105,8 @@ function build (ref, opts, next) {
 
   var sha = util.refSha(ref);
   var cwd = __dirname + '/../vms/' + sha;
-  var play = playbook.generate(ref);
 
-  if (isBuilding(ref)) {
-    return buildingState.get(util.refSha(ref)).nodeify(next);
-  }
-
-  var promise = 
-  Promise.promisify(playbook.status)(ref.id)
-  .catch(function (err) {
-    buildingState.delete(sha);
-    return Promise.reject(new Error('Dependency for `' + ref.id + '` missing:\n' + err.message));
-  })
-  .then(function () {
-    console.error('Starting build', sha);
-    return clean(sha)
-    .then(function () {
-      wrench.rmdirSyncRecursive(cwd, true);
-      wrench.copyDirSyncRecursive(__dirname + '/../template', cwd)
-      fs.writeFileSync(cwd + '/playbook.yml', play, 'utf-8');
-      fs.writeFileSync(cwd + '/.env', vagrantenv(sha), 'utf-8');
-    })
-    .then(function () {
-      console.log('up');
-      return vagrant.up(cwd);
-    })
+  var promise = allocate(ref, opts)
     .then(function () {
       console.log('provision')
       return vagrant.provision(cwd);
@@ -106,8 +129,7 @@ function build (ref, opts, next) {
         .finally(function () {
           buildingState.delete(sha);
         })
-    })
-  });
+    });
 
   buildingState.set(sha, promise);
 
