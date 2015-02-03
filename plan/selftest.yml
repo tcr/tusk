@@ -62,4 +62,4 @@ build:
     - name: node install
       run: cd="/tusk/work" cmd="npm install"
     - name: self-test
-      run: cd="/tusk/work" cmd="./src/cli.js build test-a"
+      run: cd="/tusk/work" cmd="./src/cli.js build test-a --force"
