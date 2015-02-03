@@ -47,6 +47,9 @@ build:
     - name: install pip
       apt: name=python-pip
       sudo: true
+    - name: force pip update
+      run: cmd="pip install --no-use-wheel --upgrade distribute"
+      sudo: true
     - name: install boto
       pip: name=boto
       sudo: true
@@ -56,8 +59,6 @@ build:
       run: cmd="cp -rf /tusk/source/. /tusk/work/"
     - name: copy config
       copy: src=/Users/tim/Desktop/ts/v/config dest=/tusk/work
-    - name: copy plans
-      copy: src=/Users/tim/Desktop/ts/v/plan dest=/tusk/work
     - name: node install
       run: cd="/tusk/work" cmd="npm install"
     - name: self-test
