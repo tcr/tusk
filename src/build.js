@@ -48,11 +48,16 @@ function reset (next) {
 
 var buildingState = new Map();
 
+
 function isBuilding (ref) {
   return buildingState.has(util.refSha(ref))
 }
 
-// Issues a build regardless of cached status.
+// Allocation locks around a promise so resource
+// allocation can happen without conflict.
+
+var allocationState = Promise.resolve();
+
 function allocate (ref) {
   var sha = util.refSha(ref);
   var cwd = __dirname + '/../vms/' + sha;
@@ -62,7 +67,10 @@ function allocate (ref) {
     return buildingState.get(util.refSha(ref)).nodeify(next);
   }
 
-  return Promise.promisify(playbook.status)(ref.id)
+  allocationState = allocationState
+    .then(function () {
+      return Promise.promisify(playbook.status)(ref.id)
+    })
     .catch(function (err) {
       buildingState.delete(sha);
       return Promise.reject(new Error('Dependency for `' + ref.id + '` missing:\n' + err.message));
@@ -94,6 +102,8 @@ function allocate (ref) {
           return vagrant.up(cwd);
         });
     });
+
+  return allocationState;
 }
 
 function build (ref, opts, next) {

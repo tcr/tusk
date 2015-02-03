@@ -49,6 +49,10 @@ Options:\n\
           return Promise.map(tree.graph.dependenciesOf(util.refSha(tree.root)), function (dep) {
             var ref = tree.map.get(dep);
             console.log('Checking deps', ref);
+            if (opts['--force']) {
+              console.log('Forcing rebuild of dep', ref);
+              return build.build(ref);
+            }
             return storage.exists(ref)
               .catch(function () {
                 console.log('Building dep', ref);
