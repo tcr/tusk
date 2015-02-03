@@ -1,0 +1,64 @@
+build:
+  source: git@bitbucket.org:timcameronryan/tusk.git
+
+  roles:
+    - nodesource.node
+    - { role: ginas.ansible, role_ansible_version: 'v1.8.2' }
+
+  setup:
+    - apt_repository: repo='deb http://http.us.debian.org/debian testing main non-free contrib' state=present
+      sudo: true
+    - apt_repository: repo='deb http://security.debian.org/ testing/updates main contrib non-free' state=present
+      sudo: true
+    - apt: update_cache=yes cache_valid_time=86400
+      sudo: true
+
+    - name: install packages
+      apt: name={{ item }} default_release=stable
+      sudo: true
+      with_items:
+        - file
+        - python
+        - zlib1g-dev
+
+    - name: install vagrant
+      apt: name={{ item }} default_release=testing state=latest
+      sudo: true
+      with_items:
+        - locales
+        - vagrant
+        - gcc
+
+    - name: install vagrant-google
+      run: cmd="vagrant plugin install vagrant-google"
+    - name: install vagrant-google box
+      run: cmd="vagrant box add gce https://github.com/mitchellh/vagrant-google/raw/master/google.box"
+
+    - name: move vagrant-google
+      run: cmd="mv ~/.vagrant.d/gems/gems/vagrant-google-0.1.4 ~/.vagrant.d/gems/gems/vagrant-google-0.1.4-bkp"
+    - name: install vagrant-google fork
+      run: cmd="git clone https://github.com/tcr/vagrant-google ~/.vagrant.d/gems/gems/vagrant-google-0.1.4"
+
+    - name: create ssh key
+      run: cmd='mkdir -p ~/.ssh; ssh-keygen -t rsa -N "" -f ~/.ssh/google_compute_engine'
+    - name: configure ssh key
+      run: cmd="gcloud compute config-ssh"
+
+    - name: install pip
+      apt: name=python-pip
+      sudo: true
+    - name: install boto
+      pip: name=boto
+      sudo: true
+
+  tasks:
+    - name: copy source
+      run: cmd="cp -rf /tusk/source/. /tusk/work/"
+    - name: copy config
+      copy: src=/Users/tim/Desktop/ts/v/config dest=/tusk/work
+    - name: copy plans
+      copy: src=/Users/tim/Desktop/ts/v/plan dest=/tusk/work
+    - name: node install
+      run: cd="/tusk/work" cmd="npm install"
+    - name: self-test
+      run: cd="/tusk/work" cmd="./src/cli.js build test-a"

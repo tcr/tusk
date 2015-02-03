@@ -1,0 +1,6 @@
+build:
+  tasks:
+    - name: make result folder
+      file: path=/tusk/result state=directory owner=tim
+    - name: uname
+      run: cmd="echo $(uname) > /tusk/result/uname"

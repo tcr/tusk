@@ -12,7 +12,9 @@ var util = require('./util');
 var config = require('./config');
 
 function getPlan (name) {
-  return yaml.safeLoad(fs.readFileSync(__dirname + '/../plan/' + name + '.yml'));
+  return fs.existsSync(__dirname + '/../custom/' + name + '.yml')
+    ? yaml.safeLoad(fs.readFileSync(__dirname + '/../custom/' + name + '.yml'))
+    : yaml.safeLoad(fs.readFileSync(__dirname + '/../plan/' + name + '.yml'));
 }
 
 function dependencyRef (k) {

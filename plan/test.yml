@@ -1,0 +1,3 @@
+build:
+  tasks:
+    - run: cmd="node -e \"console.log('hi')\""

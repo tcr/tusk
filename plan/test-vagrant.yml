@@ -1,0 +1,18 @@
+build:
+  setup:
+    - apt_repository: repo='deb http://http.us.debian.org/debian testing main non-free contrib' state=present
+      sudo: true
+    - apt_repository: repo='deb http://security.debian.org/ testing/updates main contrib non-free' state=present
+      sudo: true
+    - apt: update_cache=yes cache_valid_time=86400
+      sudo: true
+
+    - name: install packages
+      apt: name={{ item }} default_release=testing
+      sudo: true
+      with_items:
+        - vagrant
+
+  tasks:
+    - name: try me
+      run: cmd="vagrant --version"

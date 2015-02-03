@@ -3,4 +3,4 @@ config/
 *.log
 *.pycx
 vms/
-plan/*.yml
+custom/
