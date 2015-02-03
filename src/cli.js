@@ -13,7 +13,7 @@ var util = require('./util');
 if (require.main === module) {
   var doc = '\
 Usage:\n\
-  tusk build <id> [--input=<arg>]... [--force]\n\
+  tusk build <id> [--input=<arg>]... [--force] [--preserve]\n\
   tusk cache <id> [--input=<arg>]... [--delete] [--force]\n\
   tusk dependencies <id>\n\
   tusk resources [--match=<arg>]...\n\
@@ -56,7 +56,13 @@ Options:\n\
         })
         .then(function () {
           console.error('Build process started.');
-          build.build(ref)
+          if (opts['--preserve']) {
+            console.error('(--preserve specified, will retain VM after build.)')
+          }
+
+          build.build(ref, {
+            preserve: opts['--preserve']
+          })
           .then(function (url) {
             console.error('Build process finished.');
             console.log(url);

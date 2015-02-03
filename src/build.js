@@ -19,7 +19,9 @@ function clean (sha) {
   return Promise.promisify(fs.exists)(vm)
     .catch(function () {
       console.log('GCing', sha);
-      return vagrant.destroy(vm)
+      return vagrant.destroy(vm, {
+          env: { TUSK_NAME: 'tusk-' + sha },
+        })
         .then(function (oh) {
           console.log('ok');
           return Promise.promisify(wrench.rmdirRecursive)(vm);
@@ -40,7 +42,13 @@ function isBuilding (ref) {
 }
 
 // Issues a build regardless of cached status.
-function build (ref, next) {
+function build (ref, opts, next) {
+  if (typeof opts == 'function') {
+    next = opts;
+    opts = {};
+  }
+  opts = opts || {};
+
   var sha = util.refSha(ref);
   var cwd = __dirname + '/../vms/' + sha;
   var play = playbook.generate(ref);
@@ -81,7 +89,12 @@ function build (ref, next) {
       return storage.exists(ref);
     })
     .finally(function () {
-      console.log('destroy');
+      if (opts.preserve) {
+        console.error('VM is specified to be preserved.')
+        return;
+      }
+
+      console.error('destroy');
       return vagrant.destroy(cwd, {
           env: { TUSK_NAME: vmname },
         })
