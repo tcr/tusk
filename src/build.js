@@ -9,9 +9,19 @@ var path = require('path');
 var playbook = require('./playbook');
 var vagrant = require('./vagrant');
 var util = require('./util');
+var config = require('./config');
 var storage = require('./storage');
 
 var root = path.join(__dirname, '/../vms');
+
+function vagrantenv (sha) {
+  var conf = config.read();
+  return {
+    TUSK_NAME: 'tusk-' + sha,
+    TUSK_PROJECT_ID: conf.gcloud.project_id,
+    TUSK_CLIENT_EMAIL: conf.gcloud.client_email,
+  };
+}
 
 function clean (sha) {
   var vm = path.join(root, sha);
@@ -20,7 +30,7 @@ function clean (sha) {
     .catch(function () {
       console.log('GCing', sha);
       return vagrant.destroy(vm, {
-          env: { TUSK_NAME: 'tusk-' + sha },
+          env: vagrantenv(sha),
         })
         .then(function (oh) {
           console.log('ok');
@@ -57,8 +67,6 @@ function build (ref, opts, next) {
     return buildingState.get(util.refSha(ref)).nodeify(next);
   }
 
-  var vmname = 'tusk-' + sha;
-
   var promise = 
   Promise.promisify(playbook.status)(ref.id)
   .catch(function (err) {
@@ -76,13 +84,13 @@ function build (ref, opts, next) {
     .then(function () {
       console.log('up');
       return vagrant.up(cwd, {
-        env: { TUSK_NAME: vmname },
+        env: vagrantenv(sha),
       });
     })
     .then(function () {
       console.log('provision')
       return vagrant.provision(cwd, {
-        env: { TUSK_NAME: vmname },
+        env: vagrantenv(sha),
       });
     })
     .then(function () {
@@ -96,7 +104,7 @@ function build (ref, opts, next) {
 
       console.error('destroy');
       return vagrant.destroy(cwd, {
-          env: { TUSK_NAME: vmname },
+          env: vagrantenv(sha),
         })
         .then(function () {
           wrench.rmdirSyncRecursive(cwd);
