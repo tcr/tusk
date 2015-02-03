@@ -17,6 +17,7 @@ Usage:\n\
   tusk cache <id> [--input=<arg>]... [--delete] [--force]\n\
   tusk dependencies <id> [--detail]\n\
   tusk resources [--match=<arg>]...\n\
+  tusk -h | --help\n\
 \n\
 Options:\n\
   -i, --input=<arg>      Input variable.\n\
