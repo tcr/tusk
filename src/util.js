@@ -37,13 +37,15 @@ function combine (a, b) {
   return c;
 }
 
+function refString (ref) {
+  return JSON.stringify(pairify(ref));
+}
+
 function refSha (ref) {
   if (!ref || !ref.id) {
     throw new Error('Expected ref with id property.');
   }
-  var json = JSON.stringify(pairify(ref));
-  var sha = sha1(json);    
-  return sha;
+  return sha1(refString(ref));
 }
 
 exports.sha1 = sha1;
@@ -51,4 +53,5 @@ exports.pairify = pairify;
 exports.collect = collect;
 exports.clone = clone;
 exports.combine = combine;
+exports.refString = refString;
 exports.refSha = refSha;

@@ -2,24 +2,16 @@ var spawn = require('child_process').spawn;
 var yaml = require('js-yaml');
 var Promise = require('bluebird');
 
-function collect (p, next) {
-  var buf = [];
-  p.stdout.on('data', function (data) {
-    buf.push(data);
-  })
-  p.on('exit', function (code) {
-    next(code, Buffer.concat(buf).toString());
-  })
-}
+var util = require('./util');
 
 function getZones (next) {
   var p = spawn("gcloud", ["compute", "zones", "list", "--format", "yaml"]);
-  collect(p, next);
+  util.collect(p, next);
 }
 
 function getQuota (region, next) {
   var p = spawn("gcloud", ["compute", "regions", "describe", region, "--format", "yaml"]);
-  collect(p, function (err, result) {
+  util.collect(p, function (err, result) {
     try {
       var q = yaml.safeLoad(result).quotas.filter(function (q) {
         return q.metric == 'CPUS'
@@ -52,7 +44,7 @@ function getZoneQuotas (next) {
       return r.region;
     }).filter(function (value, index, self) {
           return self.indexOf(value) === index;
-    });;
+    });
 
     var current = Promise.resolve();
     Promise.map(zones, function (region) {
@@ -61,6 +53,6 @@ function getZoneQuotas (next) {
   })
 }
 
-getZoneQuotas(function (err, result) {
-  console.log(err, result);
-})
+exports.getZones = getZones;
+exports.getQuota = getQuota;
+exports.getZoneQuotas = getZoneQuotas;

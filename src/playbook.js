@@ -3,19 +3,14 @@
 var fs = require('fs');
 var crypto = require('crypto');
 var yaml = require('js-yaml');
+var Map = require('es6-map');
+
 var check = require('./check');
 var Promise = require('bluebird');
 var util = require('./util');
 
 function getPlan (name) {
   return yaml.safeLoad(fs.readFileSync(__dirname + '/../plan/' + name + '.yml'));
-}
-
-function status (name, next) {
-  var deps = (getPlan(name).build || {}).dependencies || [];
-  Promise.map(deps, function (dep) {
-    return Promise.promisify(check.check)(dep);
-  }).nodeify(next);
 }
 
 function dependencyRef (k) {
@@ -28,8 +23,92 @@ function dependencyRef (k) {
       ref[key] = String(k[id][key]);
     })
     ref.id = id;
-    return name;
+    return ref;
   }
+}
+
+function getImmediateDependencies (id, next) {
+  return Promise.try(function () {
+    return ((getPlan(id).build || {}).dependencies || []).map(dependencyRef);
+  })
+  .nodeify(next);
+}
+
+function getDependencies (ref, next) {
+  var DepGraph = require('dependency-graph').DepGraph;
+  var graph = new DepGraph();
+  var refmap = new Map();
+
+  var sha = util.refSha(ref);
+  refmap.set(sha, ref);
+  graph.addNode(sha);
+
+  var hash = {};
+  hash[sha] = getImmediateDependencies(ref.id);
+
+  return (function loop (hash) {
+    return Promise.props(hash)
+    .then(function (results) {
+      var hash2 = {};
+      Object.keys(results).forEach(function (key) {
+        results[key].forEach(function (dep) {
+          var sha = util.refSha(dep);
+          if (!graph.hasNode(sha)) {
+            hash2[sha] = getImmediateDependencies(dep.id);
+            refmap.set(sha, dep);
+            graph.addNode(sha);
+          }
+          graph.addDependency(key, sha);
+        });
+      });
+      if (Object.keys(hash2).length) {
+        return loop(hash2);
+      }
+      return {
+        root: ref,
+        graph: graph,
+        map: refmap,
+      };
+    });
+  })(hash)
+  .nodeify(next);
+}
+
+function yamlRef (ref) {
+  if (Object.keys(ref).length < 2) {
+    k = ref.id;
+  } else {
+    var hash = util.clone(ref);
+    delete hash.id;
+    k = {};
+    k[ref.id] = hash;
+  }
+  return yaml.safeDump(k).trim();
+}
+
+function outputDependencyTree (tree) {
+  // Convert graph to tree
+  var arch = {
+    label: yamlRef(tree.root),
+    nodes: (function nodes (sha) {
+      return tree.graph.outgoingEdges[sha].map(function (depsha) {
+        var ref = tree.map.get(depsha);
+        var subnodes = nodes(depsha);
+        var label = yamlRef(ref);
+        return subnodes.length
+          ? { label: label, nodes: subnodes }
+          : label;
+      });
+    })(util.refSha(tree.root)),
+  }
+  return require('archy')(arch);
+}
+
+function status (id, next) {
+  Promise.map(getImmediateDependencies(id), function (ref) {
+    console.log(' - checking for', ref);
+    return Promise.promisify(check.check)(ref);
+  }).nodeify(next);
 }
 
 function generate (ref) {
@@ -55,7 +134,7 @@ function generate (ref) {
         console.error('(ref:', ref, ')');
         return [
           {
-            "name": "download " + k.id,
+            "name": "download " + ref.id,
             "get_url": {
               "url": 'https://storage.googleapis.com/tusk/' + sha + '.tar.gz',
               "dest": '/tmp/' + sha + '.tar.gz'
@@ -89,6 +168,7 @@ function generate (ref) {
         {
           "name": "require git",
           "apt": "name=git",
+          "sudo": true,
         },
         {
           "name": "download " + source + '#' + commit,
@@ -132,28 +212,5 @@ function generate (ref) {
 
 exports.status = status;
 exports.generate = generate;
-
-// CLI
-
-if (require.main === module) {
-  if (process.argv.length < 3) {
-    console.error('Usage: playbook.js name');
-    process.exit(1);
-  }
-
-  var name = process.argv[2];
-
-  // Parse args
-  var input = {};
-  for (var i = 0; i < process.argv.length; i++) {
-    if (process.argv[i] == '-i') {
-      var def = process.argv[++i];
-      if (def && def.indexOf("=") > -1) {
-        var _ = def.split("="), k = _[0], v = _[1];
-        input[k] = v;
-      }
-    }
-  }
-
-  console.log(generate(name, input));
-}
+exports.getDependencies = getDependencies;
+exports.outputDependencyTree = outputDependencyTree;
