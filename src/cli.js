@@ -16,10 +16,11 @@ Usage:\n\
   tusk build <id> [--input=<arg>]... [--force]\n\
   tusk cache <id> [--input=<arg>]... [--delete] [--force]\n\
   tusk dependencies <id>\n\
-  tusk resources\n\
+  tusk resources [--match=<arg>]...\n\
 \n\
 Options:\n\
-  -i, --input=<arg>      Input variable.';
+  -i, --input=<arg>      Input variable.\n\
+  -m, --match=<arg>      Match resources.';
 
   var opts = docopt(doc);
 
@@ -79,7 +80,14 @@ Options:\n\
 
   if (opts.resources) {
     var quota = require('./quota');
-    quota.getZoneQuotas(function (err, quotas) {
+    
+    var query = {};
+    (opts['--match'] || []).forEach(function (def) {
+      var _ = def.split("="), k = _[0] || '', v = _[1] || '';
+      query[k] = parseInt(v);
+    });
+
+    quota.query(query, function (err, quotas) {
       console.log(yaml.safeDump({
         targets: quotas
       }));

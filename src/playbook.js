@@ -189,6 +189,13 @@ function generate (ref) {
         }];
       })(openwrt.build.source) : []
     },
+    // TODO screen roles
+    {
+      "hosts": "all",
+      "vars": util.clone(ref),
+      "sudo": true,
+      "roles": openwrt['build'].roles || [],
+    },
     {
       "hosts": "all",
       "vars": util.clone(ref),
