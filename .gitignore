@@ -5,3 +5,5 @@ config/
 vms/
 custom/
 .env
+etc
+
