@@ -35,112 +35,121 @@ Options:\n\
   });
   ref.id = opts['<id>'];
 
-  // Reset, build, love
   if (opts.build) {
-    storage.exists(ref, function (err, message) {
-      if (!err && !opts['--force']) {
-        console.error('Cached build exists.');
-        console.error('Run with --force to override.');
-        return;
-      }
-      build.reset(function (code) {
-        // one layer deep with deps
-        dependencies.getDependencies(ref)
-        .then(function (tree) {
-          return Promise.map(tree.graph.dependenciesOf(util.refSha(tree.root)), function (dep) {
-            var ref = tree.map.get(dep);
-            console.log('Checking deps', ref);
-            return storage.exists(ref)
-              .catch(function () {
-                console.log('Building dep', ref);
-                return build.build(ref);
-              })
-          });
-        })
-        .then(function () {
-          console.error('Build process started.');
-          if (opts['--preserve']) {
-            console.error('(--preserve specified, will retain VM after build.)')
-          }
+    cmdBuild(opts, ref);
+  } else if (opts.resources) {
+    cmdResources(opts);
+  } else if (opts.dependencies) {
+    cmdDependenies(opts);
+  } else if (opts.cache) {
+    cmdCache(opts, ref);
+  }
+}
 
-          build.build(ref, {
-            preserve: opts['--preserve']
-          })
-          .then(function (url) {
-            console.error('Build process finished.');
-            console.log(url);
-          }, function (err) {
-            console.error('Build process finished with error.');
-            console.error(err.message);
-            process.on('exit', function () {
-              process.exit(1);
-            });
-          })
+function cmdBuild (opts, ref) {
+  storage.exists(ref, function (err, message) {
+    if (!err && !opts['--force']) {
+      console.error('Cached build exists.');
+      console.error('Run with --force to override.');
+      return;
+    }
+    build.reset(function (code) {
+      // one layer deep with deps
+      dependencies.getDependencies(ref)
+      .then(function (tree) {
+        return Promise.map(tree.graph.dependenciesOf(util.refSha(tree.root)), function (dep) {
+          var ref = tree.map.get(dep);
+          console.log('Checking deps', ref);
+          return storage.exists(ref)
+            .catch(function () {
+              console.log('Building dep', ref);
+              return build.build(ref);
+            })
+        });
+      })
+      .then(function () {
+        console.error('Build process started.');
+        if (opts['--preserve']) {
+          console.error('(--preserve specified, will retain VM after build.)')
+        }
+
+        build.build(ref, {
+          preserve: opts['--preserve']
+        })
+        .then(function (url) {
+          console.error('Build process finished.');
+          console.log(url);
         }, function (err) {
-          console.error('Error in building dependencies.');
-          console.error(err);
+          console.error('Build process finished with error.');
+          console.error(err.message);
           process.on('exit', function () {
             process.exit(1);
-          })
-        });
+          });
+        })
+      }, function (err) {
+        console.error('Error in building dependencies.');
+        console.error(err);
+        process.on('exit', function () {
+          process.exit(1);
+        })
       });
     });
-  }
+  });
+}
 
-  if (opts.resources) {
-    var quota = require('./quota');
-    
-    var query = {};
-    (opts['--match'] || []).forEach(function (def) {
-      var _ = def.split("="), k = _[0] || '', v = _[1] || '';
-      query[k] = parseInt(v);
-    });
+function cmdResources (opts) {
+  var quota = require('./quota');
+  
+  var query = {};
+  (opts['--match'] || []).forEach(function (def) {
+    var _ = def.split("="), k = _[0] || '', v = _[1] || '';
+    query[k] = parseInt(v);
+  });
 
-    quota.query(query, function (err, quotas) {
-      console.log(yaml.safeDump({
-        targets: quotas
-      }));
-    });
-  }
+  quota.query(query, function (err, quotas) {
+    console.log(yaml.safeDump({
+      targets: quotas
+    }));
+  });
+}
 
-  if (opts.dependencies) {
-    dependencies.getDependencies(ref)
-    .then(function (tree) {
-      ls.outputDependencyTree(tree, {
-          detail: opts['--detail']
-        })
-        .then(function (art) {
-          console.log(art);
+function cmdDependenies (opts) {
+  dependencies.getDependencies(ref)
+  .then(function (tree) {
+    ls.outputDependencyTree(tree, {
+        detail: opts['--detail']
+      })
+      .then(function (art) {
+        console.log(art);
+      });
+  })
+}
+
+function cmdCache (opts, ref) {
+  console.error('ref:', ref);
+  console.error('sha:', util.refSha(ref));
+  storage.exists(ref, function (err, url) {
+    if (err) {
+      console.error('cache unavailable:', err.message);
+      process.exit(1);
+    } else {
+      console.error('cache available')
+      console.log(url);
+      if (opts['--delete']) {
+        console.error('');
+        read({ prompt: 'Would you like to delete? [y/N]' }, function (err, out) {
+          if (out && out.match(/^y(es)?$/i)) {
+            storage.destroy(ref, function (err, result) {
+              if (err) {
+                console.error(err.message);
+                process.exit(1);
+              } else {
+                console.log(result.msg);
+              }
+            })
+          }
         });
-    })
-  }
-
-  if (opts.cache) {
-    console.error('ref:', ref);
-    console.error('sha:', util.refSha(ref));
-    storage.exists(ref, function (err, url) {
-      if (err) {
-        console.error('cache unavailable:', err.message);
-        process.exit(1);
-      } else {
-        console.error('cache available')
-        console.log(url);
-        if (opts['--delete']) {
-          console.error('');
-          read({ prompt: 'Would you like to delete? [y/N]' }, function (err, out) {
-            if (out && out.match(/^y(es)?$/i)) {
-              storage.destroy(ref, function (err, result) {
-                if (err) {
-                  console.error(err.message);
-                  process.exit(1);
-                } else {
-                  console.log(result.msg);
-                }
-              })
-            }
-          });
-        }
       }
-    });
-  }
+    }
+  });
 }
