@@ -42,10 +42,21 @@ function gc_storage (object, mode, next) {
 
 // Check if a ref is already compiled.
 
+// TODO remove this function
 /* pub */ function exists (ref, next) {
   return gc_storage(util.refSha(ref) + ".tar.gz", "get_url")
     .then(function (result) {
       return result.url;
+    })
+    .nodeify(next);
+}
+
+/* pub */ function isCached (ref, next) {
+  return gc_storage(util.refSha(ref) + ".tar.gz", "get_url")
+    .then(function (result) {
+      return Promise.resolve({ cached: true, url: result.url });
+    }, function () {
+      return Promise.resolve({ cached: false });
     })
     .nodeify(next);
 }
@@ -55,5 +66,6 @@ function gc_storage (object, mode, next) {
     .nodeify(next);
 }
 
+exports.isCached = isCached;
 exports.exists = exists;
 exports.destroy = destroy;

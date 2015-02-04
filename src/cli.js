@@ -54,44 +54,28 @@ function cmdBuild (opts, ref) {
       return;
     }
     build.reset(function (code) {
-      // one layer deep with deps
-      dependencies.getDependencies(ref)
-      .then(function (tree) {
-        return Promise.map(tree.graph.dependenciesOf(util.refSha(tree.root)), function (dep) {
-          var ref = tree.map.get(dep);
-          console.log('Checking deps', ref);
-          return storage.exists(ref)
-            .catch(function () {
-              console.log('Building dep', ref);
-              return build.build(ref);
-            })
+      console.error('Build process started.');
+      if (opts['--preserve']) {
+        console.error('(--preserve specified, will retain VM after build.)')
+      }
+
+      dependencies.mapDependencies(ref, function (ref, deps) {
+        console.log('Building', ref);
+        console.log(deps.length ? 'Edge' : 'Leaf', ref);
+
+        return build.build(ref, {
+          preserve: opts['--preserve']
         });
       })
-      .then(function () {
-        console.error('Build process started.');
-        if (opts['--preserve']) {
-          console.error('(--preserve specified, will retain VM after build.)')
-        }
-
-        build.build(ref, {
-          preserve: opts['--preserve']
-        })
-        .then(function (url) {
-          console.error('Build process finished.');
-          console.log(url);
-        }, function (err) {
-          console.error('Build process finished with error.');
-          console.error(err.message);
-          process.on('exit', function () {
-            process.exit(1);
-          });
-        })
+      .then(function (url) {
+        console.error('Build process finished.');
+        console.log(url);
       }, function (err) {
-        console.error('Error in building dependencies.');
+        console.error('Build process finished with error.');
         console.error(err);
         process.on('exit', function () {
           process.exit(1);
-        })
+        });
       });
     });
   });
