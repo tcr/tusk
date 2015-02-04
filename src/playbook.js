@@ -152,8 +152,8 @@ function generate (ref) {
   console.log('Generating playbook for', ref);
   console.log('sha=', sha);
 
-  var setup = yaml.safeLoad(fs.readFileSync(__dirname + '/tusk_setup.yml'));
-  var upload = yaml.safeLoad(fs.readFileSync(__dirname + '/tusk_upload.yml'));
+  var setup = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_setup.yml'));
+  var upload = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_upload.yml'));
   var openwrt = getPlan(ref.id);
 
   setup['hosts'] = 'all';
