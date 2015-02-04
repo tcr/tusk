@@ -1,4 +1,5 @@
 var crypto = require('crypto');
+var Map = require('es6-map');
 
 function sha1 (value) {
   var shasum = crypto.createHash('sha1');
@@ -48,6 +49,19 @@ function refSha (ref) {
   return sha1(refString(ref));
 }
 
+function memoize (hash, fn) {
+  var memo = new Map();
+  return function self (arg) {
+    if (memo.has(hash(arg))) {
+      return memo.get(hash(arg));
+    }
+
+    var result = fn.call(self, arg);
+    memo.set(hash(arg), result);
+    return result;
+  }
+}
+
 exports.sha1 = sha1;
 exports.pairify = pairify;
 exports.collect = collect;
@@ -55,3 +69,4 @@ exports.clone = clone;
 exports.combine = combine;
 exports.refString = refString;
 exports.refSha = refSha;
+exports.memoize = memoize;

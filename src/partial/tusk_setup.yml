@@ -1,12 +1,9 @@
 sudo: true
 
-pre_tasks:
-  - apt: update_cache=yes cache_valid_time=86400
-
-#roles:
-#  - nodesource.node
-
 tasks:
+  - name: update apt
+    apt: update_cache=yes cache_valid_time=86400
+
   - name: make tusk work folder
     file: path=/tusk state=directory owner=tim
   - name: make result folder
@@ -21,7 +18,7 @@ tasks:
       dest: /home/tim/.ssh/known_hosts
       create: yes
       state: present
-      line: "{{ lookup('pipe', 'ssh-keyscan -t rsa github.com') }}"
+      line: "{{ lookup('pipe', 'ssh-keyscan -t rsa -T 30 github.com') }}"
       regexp: "^github\\.com"
 
   - name: ensure bitbucket.org is a known host
@@ -29,5 +26,5 @@ tasks:
       dest: /home/tim/.ssh/known_hosts
       create: yes
       state: present
-      line: "{{ lookup('pipe', 'ssh-keyscan -t rsa bitbucket.org') }}"
+      line: "{{ lookup('pipe', 'ssh-keyscan -t rsa -T 30 bitbucket.org') }}"
       regexp: "^bitbucket\\.org"

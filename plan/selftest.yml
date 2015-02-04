@@ -57,6 +57,10 @@ build:
       pip: name=boto
       sudo: true
 
+    - name: update google cloud components
+      run: cmd="gcloud components update -q"
+      sudo: true
+
   tasks:
     - name: copy source
       run: cmd="cp -rf /tusk/source/. /tusk/work/"
@@ -65,7 +69,7 @@ build:
     - name: node install
       run: cd="/tusk/work" cmd="npm install"
     - name: self-test
-      run: cd="/tusk/work" cmd="./src/cli.js build test-a --force"
+      run: cd="/tusk/work" cmd="./src/cli.js build test-b --force"
 
     - name: completion
       run: cmd="mkdir /tusk/result && echo success | tee -a /tusk/result/selftest"
