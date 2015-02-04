@@ -18,12 +18,12 @@ var preferRegions = [
   'asia-east1',
 ];
 
-function getZones (next) {
+/* pub */ function getZones (next) {
   var p = spawn("gcloud", ["compute", "zones", "list", "--format", "yaml"]);
   util.collect(p, next);
 }
 
-function getQuota (region, next) {
+/* pub */ function getQuota (region, next) {
   var p = spawn("gcloud", ["compute", "regions", "describe", region, "--format", "yaml"]);
   util.collect(p, function (err, result) {
     try {
@@ -59,7 +59,7 @@ function getQuota (region, next) {
   });
 }
 
-function getZoneQuotas (next) {
+/* pub */ function getZoneQuotas (next) {
   getZones(function (err, zones) {
     var res = [];
     yaml.safeLoadAll(zones, function (data) {
@@ -85,7 +85,7 @@ function getZoneQuotas (next) {
   })
 }
 
-function query (query, next) {
+/* pub */ function query (query, next) {
   getZoneQuotas(function (err, quotas) {
     if (!err && query.cores) {
       quotas = quotas.filter(function (target) {

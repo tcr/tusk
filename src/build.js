@@ -12,6 +12,7 @@ var util = require('./util');
 var config = require('./config');
 var storage = require('./storage');
 var quota = require('./quota');
+var dependencies = require('./dependencies');
 
 
 var root = path.join(__dirname, '/../vms');
@@ -26,7 +27,7 @@ function vagrantenv (sha, zone) {
   ].join('\n');
 }
 
-function clean (sha) {
+/* pub */ function clean (sha) {
   var vm = path.join(root, sha);
 
   return Promise.promisify(fs.exists)(vm)
@@ -40,7 +41,7 @@ function clean (sha) {
     })
 }
 
-function reset (next) {
+/* pub */ function reset (next) {
   wrench.mkdirSyncRecursive(root);
   return Promise.map(fs.readdirSync(root), clean)
     .nodeify(next);
@@ -58,6 +59,14 @@ function isBuilding (ref) {
 
 var allocationState = Promise.resolve();
 
+function buildStatus (id, next) {
+  return Promise.map(dependencies.getImmediateDependencies(id), function (ref) {
+    console.log(' - checking for', ref);
+    return storage.exists(ref);
+  })
+    .nodeify(next);
+}
+
 function allocate (ref) {
   var sha = util.refSha(ref);
   var cwd = __dirname + '/../vms/' + sha;
@@ -69,7 +78,7 @@ function allocate (ref) {
 
   allocationState = allocationState
     .then(function () {
-      return Promise.promisify(playbook.status)(ref.id)
+      return buildStatus(ref.id)
     })
     .catch(function (err) {
       buildingState.delete(sha);
@@ -106,7 +115,7 @@ function allocate (ref) {
   return allocationState;
 }
 
-function build (ref, opts, next) {
+/* pub */ function build (ref, opts, next) {
   if (typeof opts == 'function') {
     next = opts;
     opts = {};

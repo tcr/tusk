@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 var fs = require('fs');
 var crypto = require('crypto');
 var yaml = require('js-yaml');
@@ -10,151 +8,16 @@ var storage = require('./storage');
 var Promise = require('bluebird');
 var util = require('./util');
 var config = require('./config');
+var dependencies = require('./dependencies');
 
-function getPlan (name) {
-  return fs.existsSync(__dirname + '/../custom/' + name + '.yml')
-    ? yaml.safeLoad(fs.readFileSync(__dirname + '/../custom/' + name + '.yml'))
-    : yaml.safeLoad(fs.readFileSync(__dirname + '/../plan/' + name + '.yml'));
-}
-
-function dependencyRef (k) {
-  if (typeof k == 'string') {
-    return {id: k};
-  } else {
-    var id = Object.keys(k).pop();
-    var ref = {};
-    Object.keys(k[id]).forEach(function (key) {
-      ref[key] = String(k[id][key]);
-    })
-    ref.id = id;
-    return ref;
-  }
-}
-
-function getImmediateDependencies (id, next) {
-  return Promise.try(function () {
-    return ((getPlan(id).build || {}).dependencies || []).map(dependencyRef);
-  })
-  .nodeify(next);
-}
-
-function getDependencies (ref, next) {
-  var DepGraph = require('dependency-graph').DepGraph;
-  var graph = new DepGraph();
-  var refmap = new Map();
-
-  var sha = util.refSha(ref);
-  refmap.set(sha, ref);
-  graph.addNode(sha);
-
-  var hash = {};
-  hash[sha] = getImmediateDependencies(ref.id);
-
-  return (function loop (hash) {
-    return Promise.props(hash)
-    .then(function (results) {
-      var hash2 = {};
-      Object.keys(results).forEach(function (key) {
-        results[key].forEach(function (dep) {
-          var sha = util.refSha(dep);
-          if (!graph.hasNode(sha)) {
-            hash2[sha] = getImmediateDependencies(dep.id);
-            refmap.set(sha, dep);
-            graph.addNode(sha);
-          }
-          graph.addDependency(key, sha);
-        });
-      });
-      if (Object.keys(hash2).length) {
-        return loop(hash2);
-      }
-      return {
-        root: ref,
-        graph: graph,
-        map: refmap,
-      };
-    });
-  })(hash)
-  .nodeify(next);
-}
-
-function yamlRef (ref) {
-  if (Object.keys(ref).length < 2) {
-    k = ref.id;
-  } else {
-    var hash = util.clone(ref);
-    delete hash.id;
-    k = {};
-    k[ref.id] = hash;
-  }
-  return yaml.safeDump(k).trim();
-}
-
-function outputDependencyTree (tree, opts, next) {
-  if (typeof opts == 'function') {
-    next = opts;
-    opts = {};
-  }
-  opts = opts || {};
-
-  var start;
-  if (opts.detail) {
-    var hash = {};
-    Object.keys(tree.graph.nodes).forEach(function (sha) {
-      hash[sha] = storage.exists(tree.map.get(sha))
-        .catch(function () {
-          return Promise.resolve(null);
-        });
-    });
-
-    start = Promise.props(hash)
-      .then(function (results) {
-        var cached = new Map();
-        Object.keys(results).forEach(function (key) {
-          cached.set(key, !!results[key]);
-        });
-        return cached;
-      })
-  } else {
-    start = Promise.resolve(new Map());
-  }
-
-  return start
-    .then(function (cached) {
-      // Convert graph to tree
-      var arch = {
-        label: yamlRef(tree.root).replace(/(\n|$)/, cached.get(util.refSha(tree.root)) ? colors.green(' # cached') + '$1' : '$1'),
-        nodes: (function nodes (sha) {
-          return tree.graph.outgoingEdges[sha].map(function (depsha) {
-            var ref = tree.map.get(depsha);
-            var subnodes = nodes(depsha);
-            var label = yamlRef(ref).replace(/(\n|$)/, cached.get(depsha) ? colors.green(' # cached') + '$1' : '$1');
-            return subnodes.length
-              ? { label: label, nodes: subnodes }
-              : label;
-          });
-        })(util.refSha(tree.root)),
-      }
-      return require('archy')(arch).trim();
-    })
-    .nodeify(next);
-}
-
-function status (id, next) {
-  Promise.map(getImmediateDependencies(id), function (ref) {
-    console.log(' - checking for', ref);
-    return storage.exists(ref);
-  }).nodeify(next);
-}
-
-function generate (ref) {
+/* pub */ function generate (ref) {
   var sha = util.refSha(ref);
   console.log('Generating playbook for', ref);
   console.log('sha=', sha);
 
   var setup = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_setup.yml'));
   var upload = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_upload.yml'));
-  var openwrt = getPlan(ref.id);
+  var openwrt = config.getPlan(ref.id);
 
   setup['hosts'] = 'all';
 
@@ -164,7 +27,7 @@ function generate (ref) {
       "hosts": "all",
       "vars": util.clone(ref),
       "tasks": [].concat.apply([], (openwrt.build.dependencies || []).map(function (k) {
-        var ref = dependencyRef(k);
+        var ref = dependencies.dependencyRef(k);
         var sha = util.refSha(ref);
 
         console.error('(ref:', ref, ')');
@@ -256,7 +119,4 @@ function generate (ref) {
   ])
 }
 
-exports.status = status;
 exports.generate = generate;
-exports.getDependencies = getDependencies;
-exports.outputDependencyTree = outputDependencyTree;

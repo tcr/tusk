@@ -6,9 +6,10 @@ var read = require('read');
 var yaml = require('js-yaml');
 
 var build = require('./build');
-var playbook = require('./playbook');
 var storage = require('./storage');
 var util = require('./util');
+var dependencies = require('./dependencies');
+var ls = require('./ls');
 
 if (require.main === module) {
   var doc = '\
@@ -44,15 +45,11 @@ Options:\n\
       }
       build.reset(function (code) {
         // one layer deep with deps
-        playbook.getDependencies(ref)
+        dependencies.getDependencies(ref)
         .then(function (tree) {
           return Promise.map(tree.graph.dependenciesOf(util.refSha(tree.root)), function (dep) {
             var ref = tree.map.get(dep);
             console.log('Checking deps', ref);
-            if (opts['--force']) {
-              console.log('Forcing rebuild of dep', ref);
-              return build.build(ref);
-            }
             return storage.exists(ref)
               .catch(function () {
                 console.log('Building dep', ref);
@@ -107,9 +104,9 @@ Options:\n\
   }
 
   if (opts.dependencies) {
-    playbook.getDependencies(ref)
+    dependencies.getDependencies(ref)
     .then(function (tree) {
-      playbook.outputDependencyTree(tree, {
+      ls.outputDependencyTree(tree, {
           detail: opts['--detail']
         })
         .then(function (art) {
