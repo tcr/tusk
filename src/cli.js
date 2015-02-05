@@ -17,6 +17,7 @@ Usage:\n\
   tusk build <id> [--input=<arg>]... [--force] [--preserve]\n\
   tusk cache <id> [--input=<arg>]... [--delete] [--force]\n\
   tusk dependencies <id> [--detail]\n\
+  tusk gc\n\
   tusk resources [--match=<arg>]...\n\
   tusk -h | --help\n\
 \n\
@@ -37,6 +38,8 @@ Options:\n\
 
   if (opts.build) {
     cmdBuild(opts, ref);
+  } else if (opts.gc) {
+    cmdGc(opts);
   } else if (opts.resources) {
     cmdResources(opts);
   } else if (opts.dependencies) {
@@ -46,14 +49,22 @@ Options:\n\
   }
 }
 
+function cmdGc (opts) {
+  build.reset()
+  .then(function () {
+    console.log('All VMs cleaned up.')
+  });
+}
+
 function cmdBuild (opts, ref) {
-  storage.exists(ref, function (err, message) {
+  storage.exists(ref, function (err, url) {
     if (!err && !opts['--force']) {
-      console.error('Cached build exists.');
+      console.error('Cached build exists:', url);
+      console.error('');
       console.error('Run with --force to override.');
       return;
     }
-    build.reset(function (code) {
+    // build.reset(function (code) {
       console.error('Build process started.');
       if (opts['--preserve']) {
         console.error('(--preserve specified, will retain VM after build.)')
@@ -72,12 +83,12 @@ function cmdBuild (opts, ref) {
         console.log(url);
       }, function (err) {
         console.error('Build process finished with error.');
-        console.error(err);
+        console.error(err.stack || err);
         process.on('exit', function () {
           process.exit(1);
         });
       });
-    });
+    // });
   });
 }
 
