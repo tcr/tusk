@@ -7,9 +7,15 @@
   pip: name=boto
 
 - name: bundle
-  run: cmd="[[ -e /tusk/result ]] && tar -czvf /tusk/result.tar.gz -C /tusk/result . || true"
+  run: cmd="[[ -e /tusk/result.tar.gz ]] || tar -czvf /tusk/result.tar.gz -C /tusk/result . || true"
 - name: upload to gstorage
   gc_storage: bucket=tusk object={{ sha }}.tar.gz src=/tusk/result.tar.gz mode=put permission=public-read
   args:
     gs_access_key: "{{ gs_access_key }}"
     gs_secret_key: "{{ gs_secret_key }}"
+
+- name: push
+  sudo: false
+  run: cd="/tusk/source" cmd="git push origin {{ item }}"
+  with_items: tusk_push
+  when: tusk_push is defined

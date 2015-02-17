@@ -1,0 +1,34 @@
+<link rel="stylesheet" href="/style.css">
+
+<form method="post" action="/build"><button type="submit">START THE BUILD</button></form>
+
+<pre id="ok" class="ansi"></pre>
+<script>
+
+var source = new EventSource('/sse');
+source.addEventListener('reset', function (msg) {
+  console.log('reset');
+  document.getElementById('ok').innerHTML = '';
+});
+
+var queue = [];
+source.addEventListener('message', function (msg) {
+  queue.push(msg.data);
+}, false);
+
+setTimeout(function next () {
+  var item = queue.splice(0, 20);
+  if (item.length) {
+    window.requestAnimationFrame(function () {
+      document.getElementById('ok').insertAdjacentHTML('beforeend', item.join(''));
+      // document.getElementById('ok').insertAdjacentHTML('beforeend', data);
+  	// log.push(data);
+      window.scrollTo(0, 1e7)
+      next();
+    });
+  } else {
+    window.requestAnimationFrame(next);
+  }
+}, 1);
+
+</script>

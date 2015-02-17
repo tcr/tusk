@@ -1,0 +1,17 @@
+html
+  head
+    title= title
+    style.
+      html, body { padding: 0; margin: 0; }
+      iframe { width: 100%; border: 0; display: block; height: 400px; }
+  body
+    h1 Tusk
+    h2 jobs
+    ul
+      each job in jobs
+        li 
+          a(href="/job/" + job.id)= job.id
+    h2 build what?
+    each id in ["openwrt", "test-a"]
+      form(method="post", action="/target/" + id + "/build")
+        button(type="submit")= id

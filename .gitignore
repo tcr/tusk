@@ -6,4 +6,5 @@ vms/
 custom/
 .env
 etc
-
+*.db
+logs

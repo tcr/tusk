@@ -1,0 +1,29 @@
+pre { color: white; line-height: 1.2; font-family: Consolas; padding: 1.0em; }
+html, body { background: #222; padding: 0; margin: 0; }
+/* Color scheme from travis-ci */
+.ansi .bold { font-weight: bold; }
+.ansi .italic { font-style: italic; }
+.ansi .black { color: #4e4e4e; }
+.ansi .black.bold { color: #7c7c7c; }
+.ansi .red { color: #ff6c60; }
+.ansi .red.bold { color: #ffb6b0; }
+.ansi .green { color: #a8ff60; }
+.ansi .green.bold { color: #ceffab; }
+.ansi .yellow { color: #ffffb6; }
+.ansi .yellow.bold { color: #ffffcb; }
+.ansi .blue { color: #96cbfe; }
+.ansi .blue.bold { color: #b5dcfe; }
+.ansi .magenta { color: #ff73fd; }
+.ansi .magenta.bold { color: #ff9cfe; }
+.ansi .cyan { color: #c6c5fe; }
+.ansi .cyan { color: #dfdffe; }
+.ansi .white { color: #eeeeee; }
+.ansi .white.bold { color: white; }
+.ansi .bg-black { background-color: #4e4e4e; }
+.ansi .bg-red { background-color: #ff6c60; }
+.ansi .bg-green { background-color: #a8ff60; }
+.ansi .bg-yellow { background-color: #ffffb6; }
+.ansi .bg-blue { background-color: #96cbfe; }
+.ansi .bg-magenta { background-color: #ff73fd; }
+.ansi .bg-cyan { background-color: #c6c5fe; }
+.ansi .bg-white { background-color: #eeeeee; }

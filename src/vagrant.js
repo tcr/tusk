@@ -1,5 +1,6 @@
 var Promise = require('bluebird');
 var spawn = require('child_process').spawn;
+var EventEmitter = require('events').EventEmitter;
 
 var util = require('./util');
 
@@ -11,20 +12,64 @@ function up (cwd, opts, next) {
   opts = opts || {};
 
   return new Promise(function (resolve, reject) {
-    var p = spawn('vagrant', ['up', '--provider=google', '--no-provision'], {
+    var p = spawn('vagrant', ['up', '--provider=google', '--no-provision', '--color'], {
       cwd: cwd,
-      stdio: "inherit",
       env: util.combine(process.env, opts.env || {}),
     });
+
+    if (opts.logger) {
+      p.stdout.pipe(opts.logger, { end: false });
+      p.stderr.pipe(opts.logger, { end: false });
+    }
+
     p.on('error', reject);
     p.on('exit', function (code) {
       code == 0
         ? resolve()
-        : reject(new Error('Error in vagrant up: ' + String(code) + '\ncwd: ' + cwd));
+        : reject(new Error('Error code in vagrant up: ' + String(code) + '\ncwd: ' + cwd));
     });
   })
   .nodeify(next);
 }
+
+// var router = new EventEmitter();
+
+// var collected = new Buffer(0);
+
+// router.on('data', function (data) {
+//   if (!Buffer.isBuffer(data)) {
+//     data = new Buffer(data, 'utf-8');
+//   }
+//   console.log(data);
+//   collected = Buffer.concat([collected, data]);
+//   writer.send('id0/update', data);
+// });
+
+// var rpackc = require('./rpackc');
+// var writer = rpackc.create();
+// writer.listen(5566);
+// writer.use({
+//   'request-full': function (data) {
+//     console.log('fullreq');
+//     writer.send('id0/full', collected);
+//   },
+// });
+
+
+
+// function Record (stream) {
+//   // how to propagate stream over RPC to reconnecting element
+//   remote should reconnect from starting point
+
+//   --> starting timestamp
+//   <-- request back history
+//   --> event... (ignored)
+//   --> back history
+//   --> event...
+//   --> event...
+// }
+
+
 
 function provision (cwd, opts, next) {
   if (typeof opts == 'function') {
@@ -34,11 +79,16 @@ function provision (cwd, opts, next) {
   opts = opts || {};
 
   return new Promise(function (resolve, reject) {
-    var p = spawn('vagrant', ['provision'], {
+    var p = spawn('vagrant', ['provision', '--color'], {
       cwd: cwd,
-      stdio: "inherit",
       env: util.combine(process.env, opts.env || {}),
     });
+
+    if (opts.logger) {
+      p.stdout.pipe(opts.logger, { end: false });
+      p.stderr.pipe(opts.logger, { end: false });
+    }
+
     p.on('error', reject);
     p.on('exit', function (code) {
       code == 0
@@ -57,11 +107,16 @@ function destroy (cwd, opts, next) {
   opts = opts || {};
 
   return new Promise(function (resolve, reject) {
-    var p = spawn('vagrant', ['destroy', '-f'], {
+    var p = spawn('vagrant', ['destroy', '-f', '--color'], {
       cwd: cwd,
-      stdio: "inherit",
       env: util.combine(process.env, opts.env || {}),
     });
+
+    if (opts.logger) {
+      p.stdout.pipe(opts.logger, { end: false });
+      p.stderr.pipe(opts.logger, { end: false });
+    }
+
     p.on('error', reject);
     p.on('exit', function (code) {
       code == 0

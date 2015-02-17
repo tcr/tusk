@@ -1,0 +1,9 @@
+---
+- name: export npm path
+  set_fact: node_bin_path=/opt/node/bin
+- name: create node folder
+  file: path={{ node_bin_path }} state=directory owner=tim
+  sudo: true
+- name: link npm to install directory
+  run: cmd="npm config set prefix /opt/node"
+  sudo: false

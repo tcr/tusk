@@ -1,0 +1,22 @@
+html
+  head
+    title= title
+    style.
+      html, body { padding: 0; margin: 0; }
+      iframe { width: 100%; border: 0; display: block; height: 400px; }
+  body
+    h1 Build log <span id="loading"></span>
+    iframe(src="log", id="log")
+    p okay
+  script.
+    var list = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'], id = 0
+    function loop () {
+      id++;
+      var char = list[id % list.length];
+      document.querySelector('#loading').innerText = char;
+    }
+    var intid = setInterval(loop, 100);
+    document.querySelector('#log').addEventListener('load', function () {
+      clearInterval(intid);
+      document.querySelector('#loading').innerText = '';
+    }, false);

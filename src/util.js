@@ -62,6 +62,20 @@ function memoize (hash, fn) {
   }
 }
 
+function connect (A, B, end) {
+  if (arguments.length < 3) {
+    end = true;
+  }
+  A.pipe(B, { end: end }).pipe(A, { end: end });
+}
+
+function disconnect (A, B) {
+  A.unpipe && A.unpipe(B);
+  B.unpipe && B.unpipe(A);
+}
+
+exports.connect = connect;
+exports.disconnect = disconnect;
 exports.sha1 = sha1;
 exports.pairify = pairify;
 exports.collect = collect;

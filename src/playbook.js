@@ -10,16 +10,32 @@ var util = require('./util');
 var config = require('./config');
 var dependencies = require('./dependencies');
 
-/* pub */ function generate (ref) {
+/* pub */ function generate (ref, merge) {
   var sha = util.refSha(ref);
   console.log('Generating playbook for', ref);
   console.log('sha=', sha);
 
   var setup = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_setup.yml'));
+  var tusk_git = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_git.yml'));
   var upload = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_upload.yml'));
   var openwrt = config.getPlan(ref.id);
 
   setup['hosts'] = 'all';
+
+  tusk_git['hosts'] = 'all';
+  if (merge) {
+    var merge_repo = merge && (merge.repo || openwrt.build.source);
+    var merge_ref = merge && (merge.ref || 'master');
+
+    console.error('Merging:', merge_repo, 'ref=' + merge_ref);
+
+    tusk_git.vars = {
+      git_merge: {
+        repo: merge_repo,
+        ref: merge_ref,
+      },
+    };
+  }
 
   return yaml.dump([
     setup,
@@ -88,6 +104,7 @@ var dependencies = require('./dependencies');
         }];
       })(openwrt.build.source) : []
     },
+    tusk_git,
     // TODO screen roles
     {
       "hosts": "all",

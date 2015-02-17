@@ -14,10 +14,12 @@ var ls = require('./ls');
 if (require.main === module) {
   var doc = '\
 Usage:\n\
-  tusk build <id> [--input=<arg>]... [--force] [--preserve]\n\
+  tusk build <id> [--input=<arg>]... [--force] [--preserve] [--merge=<repo>]\n\
   tusk cache <id> [--input=<arg>]... [--delete] [--force]\n\
   tusk dependencies <id> [--detail]\n\
   tusk gc\n\
+  tusk server\n\
+  tusk web\n\
   tusk resources [--match=<arg>]...\n\
   tusk -h | --help\n\
 \n\
@@ -36,7 +38,13 @@ Options:\n\
   });
   ref.id = opts['<id>'];
 
-  if (opts.build) {
+  if (opts.server) {
+    require('./server.js');
+  } else if (opts.web) {
+    require('./web.js');
+  } else if (opts.build) {
+    cmdBuild(opts, ref);
+  } else if (opts.merge) {
     cmdBuild(opts, ref);
   } else if (opts.gc) {
     cmdGc(opts);
@@ -50,7 +58,9 @@ Options:\n\
 }
 
 function cmdGc (opts) {
-  build.reset()
+  build.reset({
+    logger: process.stderr
+  })
   .then(function () {
     console.log('All VMs cleaned up.')
   });
@@ -64,31 +74,35 @@ function cmdBuild (opts, ref) {
       console.error('Run with --force to override.');
       return;
     }
-    // build.reset(function (code) {
-      console.error('Build process started.');
-      if (opts['--preserve']) {
-        console.error('(--preserve specified, will retain VM after build.)')
-      }
 
-      dependencies.mapDependencies(ref, function (ref, deps) {
-        console.log('Building', ref);
-        console.log(deps.length ? 'Edge' : 'Leaf', ref);
+    console.error('Build process started.');
+    if (opts['--preserve']) {
+      console.error('(--preserve specified, will retain VM after build.)')
+    }
 
-        return build.build(ref, {
-          preserve: opts['--preserve']
-        });
-      })
-      .then(function (url) {
-        console.error('Build process finished.');
-        console.log(url);
-      }, function (err) {
-        console.error('Build process finished with error.');
-        console.error(err.stack || err);
-        process.on('exit', function () {
-          process.exit(1);
-        });
+    var buildopts = {
+      preserve: opts['--preserve'],
+      merge: opts['--merge'] ? {
+        repo: opts['--merge'].replace(/\#.*$/, '') || null,
+        ref: opts['--merge'].replace(/^.*?\#/, '') || null,
+      } : null,
+    }
+
+    dependencies.mapDependencies(ref, function (ref, deps) {
+      console.log('Building', ref);
+      console.log(deps.length ? 'Edge' : 'Leaf', ref);
+      return build.build(ref, buildopts);
+    })
+    .then(function (url) {
+      console.error('Build process finished.');
+      console.log(url);
+    }, function (err) {
+      console.error('Build process finished with error.');
+      console.error(err.stack || err);
+      process.on('exit', function () {
+        process.exit(1);
       });
-    // });
+    });
   });
 }
 
@@ -112,11 +126,11 @@ function cmdDependenies (opts) {
   dependencies.getDependencies(ref)
   .then(function (tree) {
     ls.outputDependencyTree(tree, {
-        detail: opts['--detail']
-      })
-      .then(function (art) {
-        console.log(art);
-      });
+      detail: opts['--detail']
+    })
+    .then(function (art) {
+      console.log(art);
+    });
   })
 }
 

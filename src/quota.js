@@ -86,15 +86,17 @@ var preferRegions = [
 }
 
 /* pub */ function query (query, next) {
-  getZoneQuotas(function (err, quotas) {
-    if (!err && query.cores) {
+  return Promise.promisify(getZoneQuotas)()
+  .then(function (quotas) {
+    if (query.cores) {
       quotas = quotas.filter(function (target) {
         return target.cores.available >= parseInt(query.cores);
       });
     }
-
-    next(err, quotas);
+    console.log(quotas);
+    return quotas;
   })
+  .nodeify(next);
 }
 
 exports.getZones = getZones;

@@ -1,13 +1,15 @@
 sudo: true
 
 tasks:
+  - set_fact: { tusk_push: [] }
+
   - name: update apt
     apt: update_cache=yes cache_valid_time=86400
 
   - name: make tusk work folder
     file: path=/tusk state=directory owner=tim
   - name: make result folder
-    file: path=/tusk/result state=absent owner=tim
+    file: path=/tusk/result state=directory owner=tim
   - name: make input folder
     file: path=/tusk/dependencies state=directory owner=tim
   - name: mount ramdisk

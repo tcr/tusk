@@ -27,13 +27,15 @@ function vagrantenv (sha, zone) {
   ].join('\n');
 }
 
-/* pub */ function clean (sha) {
+/* pub */ function clean (sha, opts) {
+  opts = opts || {};
+
   var vm = path.join(root, sha);
 
   return Promise.promisify(fs.exists)(vm)
     .catch(function () {
       console.log('GCing', sha);
-      return vagrant.destroy(vm)
+      return vagrant.destroy(vm, opts)
         .then(function (oh) {
           console.log('ok');
           return Promise.promisify(wrench.rmdirRecursive)(vm);
@@ -41,10 +43,17 @@ function vagrantenv (sha, zone) {
     })
 }
 
-/* pub */ function reset (next) {
+/* pub */ function reset (opts, next) {
+  if (typeof opts == 'function') {
+    next = opts;
+    opts = {};
+  }
+
   wrench.mkdirSyncRecursive(root);
-  return Promise.map(fs.readdirSync(root), clean)
-    .nodeify(next);
+  return Promise.map(fs.readdirSync(root), function (sha) {
+    return clean(sha, opts);
+  })
+  .nodeify(next);
 }
 
 var buildingState = new Map();
@@ -64,13 +73,13 @@ function buildStatus (id, next) {
     console.log(' - checking for', ref);
     return storage.exists(ref);
   })
-    .nodeify(next);
+  .nodeify(next);
 }
 
-function allocate (ref) {
+function allocate (ref, opts) {
   var sha = util.refSha(ref);
   var cwd = __dirname + '/../vms/' + sha;
-  var play = playbook.generate(ref);
+  var play = playbook.generate(ref, opts.merge);
 
   if (isBuilding(ref)) {
     return buildingState.get(util.refSha(ref)).nodeify(next);
@@ -108,7 +117,7 @@ function allocate (ref) {
         })
         .then(function () {
           console.log('up');
-          return vagrant.up(cwd);
+          return vagrant.up(cwd, opts);
         });
     });
 
@@ -128,7 +137,7 @@ function allocate (ref) {
   var promise = allocate(ref, opts)
     .then(function () {
       console.log('provision')
-      return vagrant.provision(cwd);
+      return vagrant.provision(cwd, opts);
     })
     .then(function () {
       return storage.exists(ref);
@@ -140,7 +149,7 @@ function allocate (ref) {
       }
 
       console.error('destroy');
-      return vagrant.destroy(cwd)
+      return vagrant.destroy(cwd, opts)
         .then(function () {
           wrench.rmdirSyncRecursive(cwd);
           console.log('done');

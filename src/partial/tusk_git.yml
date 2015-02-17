@@ -1,0 +1,23 @@
+tasks:
+  - apt: name=git
+    when: git_merge is defined
+    sudo: true
+
+  - run: cmd="git config --global user.email tusk@technical.io"
+    when: git_merge is defined
+  - run: cmd="git config --global user.name Tusk"
+    when: git_merge is defined
+
+  # Merge branch
+  - run: cd="/tusk/source" cmd="git branch -D tusk-merge || true"
+    when: git_merge is defined
+  - run: cd="/tusk/source" cmd="git checkout -b tusk-merge master"
+    when: git_merge is defined
+  - run: cd="/tusk/source" cmd="git pull {{ git_merge.repo }} {{ git_merge.ref }}"
+    when: git_merge is defined
+  - run: cd="/tusk/source" cmd="git checkout master"
+    when: git_merge is defined
+  - run: cd="/tusk/source" cmd="git merge --no-ff tusk-merge --no-edit"
+    when: git_merge is defined
+  - run: cd="/tusk/source" cmd="git branch -D tusk-merge"
+    when: git_merge is defined
