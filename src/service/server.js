@@ -14,6 +14,7 @@ var rpackc = require('./rpackc');
 var table = require('./datastore').table;
 
 var records = {};
+var jobs = {};
 
 function jobOutput (id) {
   return records[id].createStream();
@@ -23,6 +24,19 @@ var rpcSpec = {
   'resources': function (rpc) {
     console.log('Querying resources');
     return quota.query({});
+  },
+
+  'job-cancel': function (rpc, job) {
+    try {
+      if (jobs[job.id]) {
+        console.log('Cancelling', job.id);
+        jobs[job.id].log.write('\n\n[tusk] Job cancelled!\n');
+        jobs[job.id].promise.cancel();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    return Promise.resolve('cool');
   },
 
   'job-list': function (rpc) {
@@ -51,8 +65,12 @@ var rpcSpec = {
     log.write('[tusk] Build #' + id + ' started.\n');
     log.write('[tusk] SHA: ' + sha + '\n');
 
-    build.build(ref, {
+    var promise = build.build(ref, {
       logger: log,
+    })
+    .catch(Promise.CancellationError, function (err) {
+      console.log('Build cancelled!')
+      throw err;
     })
     .then(function (url) {
       console.error('Build process finished.');
@@ -62,10 +80,16 @@ var rpcSpec = {
       console.error(err.stack || err);
     })
     .finally(function () {
+      console.log('Build finished.');
       log.write('[tusk] Build finished.\n');
       log.end();
       table('jobs').remove(row);
     })
+
+    jobs[id] = {
+      promise: promise,
+      log: log,
+    };
 
     return Promise.resolve({
       id: id

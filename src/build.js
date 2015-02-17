@@ -33,14 +33,14 @@ function vagrantenv (sha, zone) {
   var vm = path.join(root, sha);
 
   return Promise.promisify(fs.exists)(vm)
-    .catch(function () {
-      console.log('GCing', sha);
-      return vagrant.destroy(vm, opts)
-        .then(function (oh) {
-          console.log('ok');
-          return Promise.promisify(wrench.rmdirRecursive)(vm);
-        });
-    })
+  .catch(function () {
+    console.log('GCing', sha);
+    return vagrant.destroy(vm, opts)
+    .then(function (oh) {
+      console.log('ok');
+      return Promise.promisify(wrench.rmdirRecursive)(vm);
+    });
+  })
 }
 
 /* pub */ function reset (opts, next) {
@@ -66,8 +66,6 @@ function isBuilding (ref) {
 // Allocation locks around a promise so resource
 // allocation can happen without conflict.
 
-var allocationState = Promise.resolve();
-
 function buildStatus (id, next) {
   return Promise.map(dependencies.getImmediateDependencies(id), function (ref) {
     console.log(' - checking for', ref);
@@ -81,47 +79,44 @@ function allocate (ref, opts) {
   var cwd = __dirname + '/../vms/' + sha;
   var play = playbook.generate(ref, opts.merge);
 
-  if (isBuilding(ref)) {
-    return buildingState.get(util.refSha(ref)).nodeify(next);
-  }
+  return Promise.resolve()
+  .cancellable()
+  .then(function () {
+    return buildStatus(ref.id)
+  })
+  .catch(function (err) {
+    buildingState.delete(sha);
+    return Promise.reject(new Error('Dependency for `' + ref.id + '` missing:\n' + err.message));
+  })
+  .then(function () {
+    console.error('Starting build', sha);
 
-  allocationState = allocationState
+    return clean(sha)
+    .cancellable()
     .then(function () {
-      return buildStatus(ref.id)
-    })
-    .catch(function (err) {
-      buildingState.delete(sha);
-      return Promise.reject(new Error('Dependency for `' + ref.id + '` missing:\n' + err.message));
+      wrench.rmdirSyncRecursive(cwd, true);
+      wrench.copyDirSyncRecursive(__dirname + '/../template', cwd)
+      fs.writeFileSync(cwd + '/playbook.yml', play, 'utf-8');
     })
     .then(function () {
-      console.error('Starting build', sha);
-      return clean(sha)
-        .then(function () {
-          wrench.rmdirSyncRecursive(cwd, true);
-          wrench.copyDirSyncRecursive(__dirname + '/../template', cwd)
-          fs.writeFileSync(cwd + '/playbook.yml', play, 'utf-8');
-        })
-        .then(function () {
-          console.error('Seeking resources...');
-          return Promise.promisify(quota.query)({ cores: 16 })
-        })
-        .then(function (targets) {
-          if (targets.length == 0) {
-            return Promise.reject(new Error('No target found to run build.'));
-          }
+      console.error('Seeking resources...');
+      return Promise.promisify(quota.query)({ cores: 16 })
+    })
+    .then(function (targets) {
+      if (targets.length == 0) {
+        return Promise.reject(new Error('No target found to run build.'));
+      }
 
-          var target = targets[0];
-          var zone = target.gcloud.region + '-' + target.gcloud.zone;
-          console.log('targeting', zone);
-          fs.writeFileSync(cwd + '/.env', vagrantenv(sha, zone), 'utf-8');
-        })
-        .then(function () {
-          console.log('up');
-          return vagrant.up(cwd, opts);
-        });
-    });
-
-  return allocationState;
+      var target = targets[0];
+      var zone = target.gcloud.region + '-' + target.gcloud.zone;
+      console.log('targeting', zone);
+      fs.writeFileSync(cwd + '/.env', vagrantenv(sha, zone), 'utf-8');
+    })
+    .then(function () {
+      console.log('up');
+      return vagrant.up(cwd, opts);
+    })
+  });
 }
 
 /* pub */ function build (ref, opts, next) {
@@ -135,29 +130,29 @@ function allocate (ref, opts) {
   var cwd = __dirname + '/../vms/' + sha;
 
   var promise = allocate(ref, opts)
+  .then(function () {
+    console.log('provision')
+    return vagrant.provision(cwd, opts);
+  })
+  .then(function () {
+    return storage.exists(ref);
+  })
+  .finally(function () {
+    if (opts.preserve) {
+      console.error('VM is specified to be preserved.')
+      return;
+    }
+
+    console.error('destroy');
+    return vagrant.destroy(cwd, opts)
     .then(function () {
-      console.log('provision')
-      return vagrant.provision(cwd, opts);
-    })
-    .then(function () {
-      return storage.exists(ref);
+      wrench.rmdirSyncRecursive(cwd);
+      console.log('done');
     })
     .finally(function () {
-      if (opts.preserve) {
-        console.error('VM is specified to be preserved.')
-        return;
-      }
-
-      console.error('destroy');
-      return vagrant.destroy(cwd, opts)
-        .then(function () {
-          wrench.rmdirSyncRecursive(cwd);
-          console.log('done');
-        })
-        .finally(function () {
-          buildingState.delete(sha);
-        })
-    });
+      buildingState.delete(sha);
+    })
+  });
 
   buildingState.set(sha, promise);
 

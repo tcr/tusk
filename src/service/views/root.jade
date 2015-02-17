@@ -1,16 +1,16 @@
 html
-  head
-    title= title
-    style.
-      html, body { padding: 0; margin: 0; }
-      iframe { width: 100%; border: 0; display: block; height: 400px; }
+  include ./head.jade
   body
-    h1 Tusk
+    include ./header.jade
+
     h2 jobs
     ul
       each job in jobs
         li 
-          a(href="/job/" + job.id)= job.id
+          a(href="/job/" + job.id)
+            b= job.ref.id
+            |  
+            = util.refSha(job.ref)
     h2 build what?
     each id in ["openwrt", "test-a"]
       form(method="post", action="/target/" + id + "/build")

@@ -1,9 +1,9 @@
 var EventEmitter = require('events').EventEmitter;
-var util = require('util');
 var fs = require('fs');
 var express = require('express');
 var through = require('through');
 
+var util = require('../util');
 var rpackc = require('./rpackc');
 var client = require('./client');
 
@@ -24,7 +24,8 @@ app.get('/', function (req, res) {
   out.rpc.request('job-list')
   .then(function (jobs) {
     res.render('root', {
-      jobs: jobs
+      jobs: jobs,
+      util: util,
     });
   })
 })
@@ -43,6 +44,18 @@ app.post('/target/:target/build', function (req, res) {
   })
 })
 
+app.post('/job/:id/cancel', function (req, res) {
+  out.rpc.request('job-cancel', { id: req.params.id })
+  .then(function (id) {
+    console.log('Cancel without error');
+  }, function (err) {
+    console.log('Cancel with error', err);
+  })
+  .finally(function () {
+    res.redirect('/job/' + req.params.id);
+  })
+})
+
 app.get('/job/:id/', function(req, res, next) {
   if (req.url.substr(-1) != '/') {
     res.redirect(301, req.url + '/');
@@ -54,8 +67,6 @@ app.get('/job/:id/', function(req, res, next) {
 });
 
 app.get('/job/:id/log', function (req, res) {
-  console.log('native request.');
-
   res.writeHead(200, {
     'Content-Type': 'text/html',
     'Cache-Control': 'no-cache',

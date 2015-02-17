@@ -1,11 +1,11 @@
 html
-  head
-    title= title
-    style.
-      html, body { padding: 0; margin: 0; }
-      iframe { width: 100%; border: 0; display: block; height: 400px; }
+  include ./head.jade
   body
-    h1 Build log <span id="loading"></span>
+    include ./header.jade
+    
+    h2 Build log <span id="loading"></span>
+    form(action="./cancel", method="post")
+      button(type="submit") Cancel job
     iframe(src="log", id="log")
     p okay
   script.
