@@ -18,36 +18,36 @@ function chartGraph (ref, hash, findDeps) {
 
   return (function loop (refs) {
     return Promise.map(refs, function (ref) {
-        return findDeps(ref.id);
-      })
-      .then(function (results) {
-        var remaining = [];
-        results.forEach(function (result, i) {
-          result.forEach(function (item) {
-            connections.push([refs[i], item]);
+      return findDeps(ref.id);
+    })
+    .then(function (results) {
+      var remaining = [];
+      results.forEach(function (result, i) {
+        result.forEach(function (item) {
+          connections.push([refs[i], item]);
 
-            if (!done.has(hash(item))) {
-              remaining.push(item);
-              done.set(hash(item), item);
-            }
-          });
+          if (!done.has(hash(item))) {
+            remaining.push(item);
+            done.set(hash(item), item);
+          }
         });
-
-        if (remaining.length) {
-          return loop(remaining);
-        }
-
-        var nodes = [];
-        done.forEach(function (item) {
-          nodes.push(item);
-        })
-
-        return {
-          nodes: nodes,
-          edges: connections
-        };
       });
-    })([ref]);
+
+      if (remaining.length) {
+        return loop(remaining);
+      }
+
+      var nodes = [];
+      done.forEach(function (item) {
+        nodes.push(item);
+      })
+
+      return {
+        nodes: nodes,
+        edges: connections
+      };
+    });
+  })([ref]);
 }
 
 function hasCycles (graph, root, hash) {
