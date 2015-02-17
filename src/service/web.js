@@ -1,9 +1,10 @@
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 var fs = require('fs');
-var rpackc = require('./rpackc');
 var express = require('express');
 var through = require('through');
+
+var rpackc = require('./rpackc');
 var client = require('./client');
 
 var out = client.connect();

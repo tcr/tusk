@@ -39,9 +39,9 @@ Options:\n\
   ref.id = opts['<id>'];
 
   if (opts.server) {
-    require('./server.js');
+    require('./service/server.js');
   } else if (opts.web) {
-    require('./web.js');
+    require('./service/web.js');
   } else if (opts.build) {
     cmdBuild(opts, ref);
   } else if (opts.merge) {

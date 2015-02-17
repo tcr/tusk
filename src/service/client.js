@@ -7,9 +7,8 @@ var Map = require('es6-map')
 
 var Record = require('./record');
 var rpackc = require('./rpackc');
-var util = require('./util');
-
-var ls = require('./ls');
+var util = require('../util');
+var ls = require('../ls');
  
 // var A = new Doc();
 // A.on('row_update', function (row) {

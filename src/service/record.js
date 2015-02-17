@@ -7,7 +7,7 @@ var path = require('path');
 
 function Record (name) {
   this.active = false;
-  this.path = path.join(__dirname, '..', 'logs', name + '.log');
+  this.path = path.join(__dirname, '..', '..', 'logs', name + '.log');
 }
 
 Record.prototype.writeStream = function () {

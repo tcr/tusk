@@ -4,14 +4,13 @@ var Doc = require('crdt').Doc
 var Promise = require('bluebird');
 var fs = require('fs');
 
+var util = require('../util');
+var build = require('../build');
+var storage = require('../storage');
+var quota = require('../quota');
+var dependencies = require('../dependencies');
 var Record = require('./record');
 var rpackc = require('./rpackc');
-var util = require('./util');
-var build = require('./build');
-var storage = require('./storage');
-
-var quota = require('./quota');
-var dependencies = require('./dependencies');
 var table = require('./datastore').table;
 
 var records = {};
