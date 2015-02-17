@@ -83,7 +83,7 @@ var rpcSpec = {
       console.log('Build finished.');
       log.write('[tusk] Build finished.\n');
       log.end();
-      table('jobs').remove(row);
+      // table('jobs').remove(row);
     })
 
     jobs[id] = {

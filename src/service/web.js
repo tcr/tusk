@@ -95,7 +95,6 @@ app.get('/job/:id/log', function (req, res) {
       console.log('terminated.');
     })
   }, function (err) {
-    console.log('horrible err', err)
     res.status(500).write('<div style="background: red; color: black">' + err.stack);
     res.end();
   })

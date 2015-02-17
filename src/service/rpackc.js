@@ -42,18 +42,21 @@ function RPC (use) {
           if (isStream(resolve)) {
             var id = uuid.v1();
 
+            function onend () {
+              console.log('ended');
+              resolve.unpipe(out);
+            }
+
             this.call('res', { id: buf.data.id, resolved: true, stream: id });
             var out = through(function (data) {
               this.call('stream', { id: id, data: data });
             }.bind(this), function () {
               this.call('stream', { id: id, data: null });
+              this.removeListener('end', onend);
             }.bind(this));
 
             resolve.pipe(out);
-            this.on('end', function () {
-              console.log('ended');
-              resolve.unpipe(out);
-            })
+            this.on('end', onend);
           } else {
             this.call('res', { id: buf.data.id, resolved: true, data: resolve });
           }
@@ -71,9 +74,10 @@ function RPC (use) {
         } else if (buf.data.stream) {
           var id = buf.data.stream;
           var stream = through();
-          this.on('message', function (buf) {
+          this.on('message', function onmessage (buf) {
             if (buf.target == 'stream' && buf.data.id == id) {
               stream.queue(buf.data.data);
+              this.removeListener('message', onmessage);
             }
           })
           handle.resolve(stream);
