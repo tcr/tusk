@@ -77,7 +77,9 @@ function RPC (use) {
           this.on('message', function onmessage (buf) {
             if (buf.target == 'stream' && buf.data.id == id) {
               stream.queue(buf.data.data);
-              this.removeListener('message', onmessage);
+              if (buf.data.data == null) {
+                this.removeListener('message', onmessage);
+              }
             }
           })
           handle.resolve(stream);

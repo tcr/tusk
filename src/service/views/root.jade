@@ -11,7 +11,13 @@ html
             b= job.ref.id
             |  
             = util.refSha(job.ref)
+            |  
+          if job.finished
+            | (complete)
+          if job.end
+            br
+            = humanizeDuration(Math.floor((job.end - job.start) / 1e3)*1e3)
     h2 build what?
-    each id in ["openwrt", "test-a"]
+    each id in plans
       form(method="post", action="/target/" + id + "/build")
         button(type="submit")= id

@@ -3,20 +3,57 @@ html
   body
     include ./header.jade
     
-    h2 Build log <span id="loading"></span>
+    h2 Job ##{id} <span id="loading"></span>
+
+    if job.end
+      p
+        | Elapsed time: 
+        = humanizeDuration(Math.floor((job.end - job.start) / 1e3)*1e3)
+
+    if job.finished && !job.error
+      p
+        a(href='artifact')
+          | [ Download build artifact ]
+
     form(action="./cancel", method="post")
       button(type="submit") Cancel job
     iframe(src="log", id="log")
-    p okay
+
   script.
     var list = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'], id = 0
+    var loadingnode = document.querySelector('#loading');
     function loop () {
       id++;
       var char = list[id % list.length];
-      document.querySelector('#loading').innerText = char;
+      loadingnode.innerText = char;
     }
-    var intid = setInterval(loop, 100);
+    // var intid = setInterval(loop, 100);
     document.querySelector('#log').addEventListener('load', function () {
       clearInterval(intid);
+      alive = false;
       document.querySelector('#loading').innerText = '';
     }, false);
+
+    /*
+    var deadid = null, alive = true;
+    function timeout () {
+      if (!alive) {
+        return;
+      }
+      if (deadid != null) {
+        clearTimeout(deadid);
+      }
+      deadid = setTimeout(function () {
+        if (!alive) {
+          return;
+        }
+        console.log('Timeout, reloading...');
+        document.querySelector('#log').contentWindow.location.reload(true);
+      }, 10*1000);
+    }
+    window.addEventListener('message', function (message) {
+      if (message.data == 'ping') {
+        timeout();
+      }
+    }, false);
+    */

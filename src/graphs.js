@@ -50,26 +50,42 @@ function chartGraph (ref, hash, findDeps) {
   })([ref]);
 }
 
+function dfs (graph, root, hash) {
+  var chain = {};
+  var visited = {};
+  var resulthash = [];
+  var results = [];
+  return (function DFS (root) {
+    var name = hash(root);
+    visited[name] = true;
+    chain[name] = true;
+    var children = [];
+    graph.edges.filter(function (edge) {
+      return name == hash(edge[0])
+    }).forEach(function (edge) {
+      var edgeName = hash(edge[1]);
+      if (!visited[edgeName]) {
+        DFS(edge[1]);
+      } else if (chain[edgeName]) {
+        throw new Error('Cycle found: ' + JSON.stringify(edge[0]) + ' -> ' + JSON.stringify(edge[1]));
+      }
+      children.push(edge[1]);
+    });
+    chain[name] = false;
+    if (resulthash.indexOf(name) === -1) {
+      resulthash.push(name);
+      results.push({
+        ref: root,
+        dependencies: children
+      });
+    }
+    return results;
+  })(root);
+}
+
 function hasCycles (graph, root, hash) {
   return Promise.try(function () {
-    var chain = {};
-    var visited = {};
-    (function DFS (root) {
-      var name = hash(root);
-      visited[name] = true;
-      chain[name] = true;
-      graph.edges.filter(function (edge) {
-        return name == hash(edge[0])
-      }).forEach(function (edge) {
-        var edgeName = hash(edge[1]);
-        if (!visited[edgeName]) {
-          DFS(edge[1]);
-        } else if (chain[edgeName]) {
-          throw new Error('Cycle found: ' + JSON.stringify(edge[0]) + ' -> ' + JSON.stringify(edge[1]));
-        }
-      });
-      chain[name] = false;
-    })(root);
+    dfs(graph, root, hash);
   });
 }
 
@@ -79,6 +95,10 @@ function findConnections (graph, ref, hash) {
   }).map(function (edge) {
     return edge[1];
   });
+}
+
+function descendents (graph, ref, hash) {
+  return dfs(graph, ref, hash);
 }
 
 function filterGraph (graph, hash, filter) {
@@ -108,4 +128,5 @@ function filterGraph (graph, hash, filter) {
 exports.chartGraph = chartGraph;
 exports.hasCycles = hasCycles;
 exports.findConnections = findConnections;
+exports.descendents = descendents;
 exports.filterGraph = filterGraph;

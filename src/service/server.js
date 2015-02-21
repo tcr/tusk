@@ -3,6 +3,7 @@ var net = require('net')
 var Doc = require('crdt').Doc
 var Promise = require('bluebird');
 var fs = require('fs');
+var humanizeDuration = require("humanize-duration")
 
 var util = require('../util');
 var build = require('../build');
@@ -13,11 +14,170 @@ var Record = require('./record');
 var rpackc = require('./rpackc');
 var table = require('./datastore').table;
 
-var records = {};
-var jobs = {};
+var currentjobs = {};
 
 function jobOutput (id) {
-  return records[id].createStream();
+  return currentjobs[id].record.createStream();
+}
+
+
+var currentAllocator = Promise.resolve();
+function allocator (ref, opts) {
+  return currentAllocator = currentAllocator
+  .then(function () {
+    return build.allocate(ref, opts)
+  });
+}
+
+// var joblock = false;
+// setInterval(function () {
+//   if (joblock) {
+//     return;
+//   }
+//   var row = table('jobs').filter(function (item) {
+//     return item.finished == false;
+//   })[0];
+//   var id = table('jobs').indexOf(row);
+//   if (!row) {
+//     return;
+//   }
+
+//   joblock = true;
+//   jobhandle(row, id)
+//   .finally(function () {
+//     joblock = false;
+//   })
+// }, 1000);
+
+// function buildjob (ref) {
+//   return dependencies.listDependencies(ref)
+//   // .then(function (graph) {
+//   //  return deps.filterCached(graph);
+//   // })
+//   .then(function (graph) {
+//     console.log('adding', graph)
+
+//     var id;
+//     dependencies.order(graph).forEach(function (entry) {
+//       console.log(entry);
+//       id = table('jobs').add({
+//         ref: entry.ref,
+//         dependencies: entry.dependencies,
+//         finished: false,
+//       })
+//     })
+
+//     return Promise.resolve({
+//       id: id
+//     });
+//   })
+// }
+
+function addjob (ref, force) {
+  return table('jobs').add({
+    ref: ref,
+    finished: false,
+    error: false,
+    force: force || false,
+    start: Date.now(),
+    end: null,
+  });
+}
+
+function jobhandle (id) {
+  var row = table('jobs')[id];
+  console.log('Consuming job #' + id, row);
+
+  var sha = util.refSha(row.ref);
+  var record = new Record(sha);
+  var log = record.writeStream();
+
+  log.write('[tusk] Build #' + id + ' started.\n');
+  log.write('[tusk] SHA: ' + sha + '\n');
+
+  console.log('1.');
+
+  var promise = Promise.resolve()
+  .cancellable()
+  .then(function () {
+    console.log('2.');
+    console.log('Check cache.');
+    // Check cache
+    return storage.isCached(row.ref)
+  })
+  .then(function (cache) {
+    console.log('Got dat cache', cache);
+    if (cache.cached && !row.force) {
+      log.write('[tusk] Build cached and complete.\n');
+      log.end();
+      row.finished = true;
+      return;
+    }
+
+    console.log('finding deps');
+    log.write('[tusk] Finding dependencies...\n');
+    return dependencies.getImmediateDependencies(row.ref.id)
+    .then(function (deps) {
+      // Adds dependencies
+      console.log('Checking deps:', deps);
+      log.write('[tusk] Awaiting and adding dependencies...\n');
+      deps.forEach(function (dep) {
+        log.write('[tusk] Dep: ' + JSON.stringify(dep) + '\n');
+      })
+
+      return Promise.map(deps, function (dep) {
+        var id = addjob(dep)
+        return jobhandle(id);
+      })
+    })
+    .then(function () {
+      console.log('Deps completed for', row.ref, '.');
+      log.write('[tusk] Dependencies available.\n');
+
+      return allocator(row.ref, {
+        logger: log,
+      })
+    })
+    .then(function () {
+      return build.execute(row.ref, {
+        logger: log,
+      });
+    })
+    .catch(Promise.CancellationError, function (err) {
+      console.log('Build cancelled!')
+      throw err;
+    })
+    .then(function (url) {
+      console.error('Build process finished.');
+      console.log(url);
+    }, function (err) {
+      console.error('Build process finished with error.');
+      console.error(err.stack || err);
+      row.error = err.stack;
+    })
+    .finally(function () {
+      row.end = Date.now();
+      row.finished = true;
+
+      console.log('Build finished.');
+      log.write('[tusk] Build finished.\n');
+      log.write('[tusk] Elapsed time: ' + humanizeDuration(row.end - row.start) + '\n');
+      log.end();
+      
+      // table('jobs').remove(row);
+    });
+  })
+  .catch(function (err) {
+    console.error('ERROR', err);
+  })
+
+  currentjobs[id] = {
+    record: record,
+    log: log,
+    promise: promise,
+  }
+
+  return promise;
 }
 
 var rpcSpec = {
@@ -28,15 +188,23 @@ var rpcSpec = {
 
   'job-cancel': function (rpc, job) {
     try {
-      if (jobs[job.id]) {
+      if (currentjobs[job.id]) {
         console.log('Cancelling', job.id);
-        jobs[job.id].log.write('\n\n[tusk] Job cancelled!\n');
-        jobs[job.id].promise.cancel();
+        currentjobs[job.id].log.write('\n\n[tusk] Job cancelled!\n');
+        currentjobs[job.id].promise.cancel();
       }
     } catch (err) {
       console.error(err);
     }
     return Promise.resolve('cool');
+  },
+
+  'job-artifact': function (rpc, id) {
+    if (!table('jobs')[id]) {
+      return Promise.reject(new Error('Job not found.'));
+    } else {
+      return storage.isCached(table('jobs')[id].ref);
+    }
   },
 
   'job-list': function (rpc) {
@@ -53,47 +221,18 @@ var rpcSpec = {
     console.log('Building.');
     // Need progress for each stream.
 
-    var row = {
-      ref: ref
-    };
-
-    var id = table('jobs').add(row)
-
-    var sha = util.refSha(ref);
-    records[id] = new Record(sha);
-    var log = records[id].writeStream();
-    log.write('[tusk] Build #' + id + ' started.\n');
-    log.write('[tusk] SHA: ' + sha + '\n');
-
-    var promise = build.build(ref, {
-      logger: log,
-    })
-    .catch(Promise.CancellationError, function (err) {
-      console.log('Build cancelled!')
-      throw err;
-    })
-    .then(function (url) {
-      console.error('Build process finished.');
-      console.log(url);
-    }, function (err) {
-      console.error('Build process finished with error.');
-      console.error(err.stack || err);
-    })
-    .finally(function () {
-      console.log('Build finished.');
-      log.write('[tusk] Build finished.\n');
-      log.end();
-      // table('jobs').remove(row);
-    })
-
-    jobs[id] = {
-      promise: promise,
-      log: log,
-    };
-
+    var id = addjob(ref, true);
+    setImmediate(jobhandle, id);
     return Promise.resolve({
       id: id
     });
+
+    // var id = table('jobs').add({
+    //   ref: ref,
+    //   dependencies: [],
+    //   finished: false,
+    // });
+    
     // return dependencies.mapDependencies(ref, function (ref, deps) {
     //   console.log('Building', ref);
     //   console.log(deps.length ? 'Edge' : 'Leaf', ref);

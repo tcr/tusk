@@ -43,30 +43,47 @@ function getCachedStatus (graph, hash) {
   });
 }
 
-/* pub */ function mapDependencies (ref, build, next) {
+/* pub */ function listDependencies (ref, next) {
   var hash = util.refSha;
-  return graphs.chartGraph(ref, util.refSha, getImmediateDependencies)
+  return graphs.chartGraph(ref, hash, getImmediateDependencies)
   .then(function (graph) {
     return graphs.hasCycles(graph, ref, hash)
     .then(function () {
-      return getCachedStatus(graph, hash)
+      return graph;
     })
-    .then(function (cache) {
-      var pruned = graphs.filterGraph(graph, hash, function (node) {
-        return cache.get(hash(node)).cached != true;
-      })
+  })
+  .nodeify(next);
+}
 
-      console.log(pruned.nodes);
-      console.log(pruned.edges);
-
-      // Create promises network.
-      return util.memoize(hash, function (ref) {
-        var connections = graphs.findConnections(pruned, ref, util.refSha);
-        return Promise.all(connections.map(this)).then(function () {
-          return build(ref, connections);
-        });
-      })(ref);
+/* pub */ function filterCached (graph, next) {
+  var hash = util.refSha;
+  return getCachedStatus(graph, hash)
+  .then(function (cache) {
+    return graphs.filterGraph(graph, hash, function (node) {
+      return cache.get(hash(node)).cached != true;
     })
+  })
+  .nodeify(next);
+}
+
+/* pub */ function order (graph) {
+  return graphs.descendents(graph, graph.nodes[0], util.refSha)
+}
+
+/* pub */ function mapDependencies (ref, build, next) {
+  var hash = util.refSha;
+  return listDependencies(ref)
+  .then(function (graph) {
+    return filterCache(graph)
+  })
+  .then(function (graph) {
+    // Create promises network.
+    return util.memoize(hash, function (ref) {
+      var connections = graphs.findConnections(pruned, ref, util.refSha);
+      return Promise.all(connections.map(this)).then(function () {
+        return build(ref, connections);
+      });
+    })(ref);
   })
   .nodeify(next);
 }
@@ -112,5 +129,10 @@ function getCachedStatus (graph, hash) {
 
 exports.dependencyRef = dependencyRef;
 exports.getImmediateDependencies = getImmediateDependencies;
+exports.listDependencies = listDependencies;
+exports.filterCached = filterCached;
+exports.order = order;
+
+// deprecated
 exports.getDependencies = getDependencies;
 exports.mapDependencies = mapDependencies;

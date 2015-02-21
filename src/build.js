@@ -56,13 +56,6 @@ function vagrantenv (sha, zone) {
   .nodeify(next);
 }
 
-var buildingState = new Map();
-
-
-function isBuilding (ref) {
-  return buildingState.has(util.refSha(ref))
-}
-
 // Allocation locks around a promise so resource
 // allocation can happen without conflict.
 
@@ -85,7 +78,6 @@ function allocate (ref, opts) {
     return buildStatus(ref.id)
   })
   .catch(function (err) {
-    buildingState.delete(sha);
     return Promise.reject(new Error('Dependency for `' + ref.id + '` missing:\n' + err.message));
   })
   .then(function () {
@@ -119,7 +111,7 @@ function allocate (ref, opts) {
   });
 }
 
-/* pub */ function build (ref, opts, next) {
+/* pub */ function execute (ref, opts, next) {
   if (typeof opts == 'function') {
     next = opts;
     opts = {};
@@ -129,11 +121,8 @@ function allocate (ref, opts) {
   var sha = util.refSha(ref);
   var cwd = __dirname + '/../vms/' + sha;
 
-  var promise = allocate(ref, opts)
-  .then(function () {
-    console.log('provision')
-    return vagrant.provision(cwd, opts);
-  })
+  console.log('provision')
+  return vagrant.provision(cwd, opts)
   .then(function () {
     return storage.exists(ref);
   })
@@ -149,16 +138,26 @@ function allocate (ref, opts) {
       wrench.rmdirSyncRecursive(cwd);
       console.log('done');
     })
-    .finally(function () {
-      buildingState.delete(sha);
-    })
-  });
+  })
+  .nodeify(next);
+}
 
-  buildingState.set(sha, promise);
+/* pub */ function build (ref, opts, next) {
+  if (typeof opts == 'function') {
+    next = opts;
+    opts = {};
+  }
+  opts = opts || {};
 
-  return promise.nodeify(next);
+  return allocate(ref, opts)
+  .then(function () {
+    return execute(ref, opts)
+  })
+  .nodeify(next);
 }
 
 exports.build = build;
+exports.allocate = allocate;
+exports.execute = execute;
 exports.clean = clean;
 exports.reset = reset;
