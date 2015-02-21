@@ -7,8 +7,77 @@ block style
     html, body, #body { display: flex; flex-grow: 1; }
     #body { flex-direction: row; flex-grow: 1; }
     #job-info { min-width: 300px; }
-    #job-log { background: #000; flex-grow: 1; display: flex; flex-direction: column; }
+    #job-log { background: #222; flex-grow: 1; display: flex; flex-direction: column; }
     #job-log iframe { width: 100%; flex-grow: 1; display: block; border: none; }
+
+    #list {
+      width: 30%;
+      min-width: 300px;
+      max-width: 600px;
+    }
+
+    .job-list {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: stretch;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      overflow-y: auto;
+    }
+
+    .job-list::-webkit-scrollbar {
+      display: none;
+    }
+
+    .job > .job-list {
+      margin-left: 1.5em;
+    }
+
+    .job {
+      flex: 0 0 auto;
+    }
+
+    .job>header {
+      padding: 1em;
+      background: #dcdcdc;
+      position: relative;
+      border-bottom: 1px solid #aaa;
+      transition: background-color 0.5s;
+    }
+
+    .job[data-status=waiting]>header {
+      background: #dcdcdc;
+    }
+
+    .job[data-status=running]>header {
+      background: #b9c9ff;
+    }
+
+    .job[data-status=abort]>header {
+      background: #ffe2b9;
+    }
+
+    .job[data-status=fail]>header {
+      background: #ffb9b9;
+    }
+
+    .job[data-status=success]>header {
+      background: #b9ffc1;
+    }
+
+    .job.selected>header:after {
+      content: "";
+      display: block;
+      position: absolute;
+      right: 0;
+      top: 4px;
+      width: 0px;
+      height: 0px;
+      border-right: 20px solid #222;
+      border-bottom: 20px solid transparent;
+      border-top: 20px solid transparent;
+    }
 
 block body
   section#job-info
@@ -26,6 +95,16 @@ block body
 
     form(action="./cancel", method="post")
       button(type="submit") Cancel job
+
+    section#list.job-list
+      div.job.selected(data-status="waiting")
+        header
+          = job.ref.id
+      each dep in job.dependencies
+        div.job(data-status="success")
+          header
+            a(href="/job/" + dep)
+              = jobs[dep].ref.id
 
   section#job-log
     iframe(src="log", id="log", autofocus)

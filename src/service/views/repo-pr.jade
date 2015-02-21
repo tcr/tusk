@@ -1,0 +1,52 @@
+extend layout
+block style
+  style.
+    a {
+      text-decoration: none;
+    }
+    table.pr-list {
+      width: 100%;
+      max-width: 1280px;
+    }
+    .pr-list img {
+      vertical-align: middle;
+      margin-right: 1em;
+    }
+    table.pr-list td {
+      height: 40px;
+      padding: 8px;
+      border-top: 1px solid #ddd
+    }
+    .pr-id {
+      font-size: 200%;
+    }
+    .pr-list tr:target {
+      background: #ffffee;
+    }
+
+block body
+  header
+    a(href='/merge/tessel')
+      &laquo; All Repos
+  h2
+    = repo
+  table.pr-list
+    each pr in prs
+      tr(id=pr.number)
+        td.pr-id
+          a(href=pr.html_url)
+            ="#"+pr.number
+        td
+          img(src=pr.user.avatar_url+'?s=40' width=40 height=40)
+          a(href=pr.user.html_url)
+            =pr.user.login
+        td.title
+          a(href=pr.html_url)
+            =pr.title
+        td
+          =pr.head.sha.slice(0, 8)
+        td
+          form(method="POST" action="/merge/"+org+"/"+repo+"/"+pr.number)
+            input(type="hidden" name="reviewer" value=user)
+            input(type="hidden" name="source" value=pr.head.sha)
+            input(type="submit" value="r+")

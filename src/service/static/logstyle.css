@@ -1,4 +1,4 @@
-pre { color: white; line-height: 1.2; font-family: Consolas; padding: 1.0em; }
+pre { color: white;padding: 16px 20px; }
 html, body { background: #222; padding: 0; margin: 0; }
 /* Color scheme from travis-ci */
 .ansi .bold { font-weight: bold; }
@@ -30,6 +30,10 @@ html, body { background: #222; padding: 0; margin: 0; }
 
 .ansi {
 	-webkit-font-smoothing: none;
+	white-space: pre-wrap;
+	font-family: Lucida Console, monospace;
+	line-height: 18px;
+	font-size: 14px;
 }
 
 body { text-rendering: optimizeSpeed; }

@@ -4,7 +4,8 @@ var express = require('express');
 var expressSession = require('express-session');
 var through = require('through');
 var Promise = require('bluebird');
-var humanizeDuration = require('humanize-duration')
+var humanizeDuration = require('humanize-duration');
+var GitHubAPI = require('github');
 
 var util = require('../util');
 var config = require('../config');
@@ -14,6 +15,18 @@ var LogParse = require('./logparse');
 var ghauth = require('./github');
 
 var out = client.connect();
+
+var github = new GitHubAPI({
+  version: "3.0.0",
+  debug: true,
+  protocol: "https",
+});
+
+github.authenticate({
+  type: 'basic',
+  username: config.read().github.user,
+  password: config.read().github.password,
+});
 
 var app = express();
 
@@ -65,6 +78,47 @@ app.get('/auth', githubOAuth, function (req, res, next) {
   res.end();
 })
 
+app.get('/merge/:org/:repo', githubOAuth.authenticated, function (req, res, next) {
+  github.pullRequests.getAll({
+    user: req.params.org,
+    repo: req.params.repo,
+    state: 'open'
+  }, function (err, prs) {
+    // console.log(err, prs);
+    // res.write(JSON.stringify(data) || 'undefined');
+    // res.end();
+    // prs = (pr for pr in data when not /^\[?(WIP|NRY|NYI)/i.test(pr.title) )
+    // return next(err) if err
+    res.render('repo-pr', {
+      org: req.params.org,
+      repo: req.params.repo,
+      prs: prs,
+    });
+  });
+  // return
+  // res.status(404).end("Not found")
+});
+
+app.post('/merge/:org/:repo/:pr', function (req, res) {
+  out.rpc.request('build', {
+    ref: {
+      id: 'merge',
+    },
+    merge: {
+      repo: null,
+      ref: 'tcr-branch',
+    }
+  })
+  .then(function (id) {
+    console.error('Build process started.');
+    res.redirect('/job/' + String(id.id));
+  }, function (err) {
+    console.error('Build process finished with error.');
+    console.error(err);
+    res.redirect('/');
+  })
+})
+
 // Views
 
 app.set('views', __dirname + '/views')
@@ -87,7 +141,9 @@ app.get('/', function (req, res) {
 })
 
 app.post('/target/:target/build', function (req, res) {
-  out.rpc.request('build', { id: req.params.target })
+  out.rpc.request('build', {
+    ref: { id: req.params.target }
+  })
   .then(function (id) {
     console.error('Build process started.');
   }, function (err) {
@@ -127,9 +183,11 @@ app.get('/job/:id/', function(req, res, next) {
       res.status(404);
       res.render('not_found');
     } else {
+      console.log(jobs);
       res.render('job', {
         title: 'Job #' + req.params.id,
         job: jobs[id],
+        jobs: jobs,
         id: id,
         humanizeDuration: humanizeDuration,
       });
@@ -155,7 +213,7 @@ app.get('/job/:id/log', function (req, res) {
   // var stream = fs.createReadStream(__dirname + '/../etc/ok/temp.txt');
 
   res.write('<!DOCTYPE html>')
-  res.write('<style>' + fs.readFileSync(__dirname + '/static/style.css', 'utf-8') + '</style>');
+  res.write('<style>' + fs.readFileSync(__dirname + '/static/logstyle.css', 'utf-8') + '</style>');
   res.write('<script>doscroll = true; lastheight = document.body.scrollHeight; function tobottom () { doscroll && window.scrollTo(0, 1e7); lastheight = document.body.scrollHeight; }</script>');
   res.write('<pre class="ansi">')
 
@@ -202,3 +260,7 @@ app.get('/job/:id/artifact', function(req, res, next) {
 });
 
 app.use(express.static(__dirname + '/static'));
+
+app.use(function (req, res) {
+  res.render('not_found');
+});

@@ -15,7 +15,8 @@ block body
         if job.end
           br
           = humanizeDuration(Math.floor((job.end - job.start) / 1e3)*1e3)
-  h2 build what?
+  
+  h2 targets
   each id in plans
     form(method="post", action="/target/" + id + "/build")
       button(type="submit")= id

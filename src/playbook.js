@@ -35,6 +35,8 @@ var dependencies = require('./dependencies');
         ref: merge_ref,
       },
     };
+  } else {
+    console.error('No merging.');
   }
 
   return yaml.dump([

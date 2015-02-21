@@ -73,7 +73,7 @@ function allocator (ref, opts) {
 //   })
 // }
 
-function addjob (ref, force) {
+function addjob (ref, merge, force) {
   return table('jobs').add({
     ref: ref,
     finished: false,
@@ -81,6 +81,8 @@ function addjob (ref, force) {
     force: force || false,
     start: Date.now(),
     end: null,
+    merge: merge,
+    dependencies: [],
   });
 }
 
@@ -126,16 +128,22 @@ function jobhandle (id) {
       })
 
       return Promise.map(deps, function (dep) {
-        var id = addjob(dep)
+        var id = addjob(dep, null)
+        row.dependencies.push(id);
         return jobhandle(id);
       })
     })
-    .then(function () {
+    .then(function (deps) {
       console.log('Deps completed for', row.ref, '.');
-      log.write('[tusk] Dependencies available.\n');
+      if (deps.length) {
+        log.write('[tusk] Dependencies forked.\n');
+      } else {
+        log.write('[tusk] No dependencies required.\n');
+      }
 
       return allocator(row.ref, {
         logger: log,
+        merge: row.merge,
       })
     })
     .then(function () {
@@ -217,11 +225,15 @@ var rpcSpec = {
     });
   },
 
-  'build': function (rpc, ref) {
+  'build': function (rpc, opts) {
     console.log('Building.');
     // Need progress for each stream.
 
-    var id = addjob(ref, true);
+    if (!opts.ref) {
+      return Promise.reject(new Error('No ref specified.'));
+    }
+
+    var id = addjob(opts.ref, opts.merge, true);
     setImmediate(jobhandle, id);
     return Promise.resolve({
       id: id
