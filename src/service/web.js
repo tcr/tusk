@@ -24,14 +24,14 @@ var server = app.listen(3000, function () {
 })
 
 app.use(expressSession({
-  secret: config.session_secret,
+  secret: config.read().web.session_secret,
   saveUninitialized: true,
   resave: true
 }));
 
 var githubOAuth = ghauth({
-  clientId: config.github_client_id,
-  clientSecret: config.github_client_secret,
+  clientId: config.read().github.client_id,
+  clientSecret: config.read().github.client_secret,
   scope: 'read:org',
 });
 
