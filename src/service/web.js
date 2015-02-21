@@ -99,14 +99,14 @@ app.get('/merge/:org/:repo', githubOAuth.authenticated, function (req, res, next
   // res.status(404).end("Not found")
 });
 
-app.post('/merge/:org/:repo/:pr', function (req, res) {
+app.post('/target/:target/merge/:ref', function (req, res) {
   out.rpc.request('build', {
     ref: {
-      id: 'merge',
+      id: req.params.target,
     },
     merge: {
-      repo: null,
-      ref: 'tcr-branch',
+      repo: null, // TODO
+      ref: req.params.ref,
     }
   })
   .then(function (id) {
@@ -140,19 +140,51 @@ app.get('/', function (req, res) {
   })
 })
 
+app.get('/target/:target', enforceSlash, function (req, res) {
+  out.rpc.request('target-plan', {
+    id: req.params.target,
+  })
+  .then(function (plan) {
+    var next = Promise.resolve(null), org = null, repo = null;
+
+    if (plan.build.source && plan.build.source.match(/github\.com/)) {
+      console.log(plan.build.source);
+      var gh = plan.build.source.match(/github\.com[\/:]([^\/\.]+)\/([^\/\.]+)/);
+      org = gh[1];
+      repo = gh[2];
+
+      next = Promise.promisify(github.pullRequests.getAll)({
+        user: org,
+        repo: repo,
+        state: 'open'
+      });
+    }
+
+    next.then(function (prs) {
+      console.log(prs);
+      res.render('target.jade', {
+        ref: { id: req.params.target },
+        org: org,
+        repo: repo,
+        prs: prs,
+      });
+    })
+  });
+})
+
 app.post('/target/:target/build', function (req, res) {
   out.rpc.request('build', {
     ref: { id: req.params.target }
   })
   .then(function (id) {
     console.error('Build process started.');
+    res.redirect('/job/' + id.id);
   }, function (err) {
     console.error('Build process finished with error.');
     console.error(err);
-  })
-  .finally(function () {
-    res.redirect('/');
-    console.log('sent request');
+    res.status(500);
+    res.write(String(err.message || err));
+    res.end();
   })
 })
 
@@ -168,13 +200,15 @@ app.post('/job/:id/cancel', function (req, res) {
   })
 })
 
-app.get('/job/:id/', function(req, res, next) {
+function enforceSlash (req, res, next) {
   if (req.url.substr(-1) != '/') {
     res.redirect(301, req.url + '/');
   } else {
     next();
   }
-}, function (req, res) {
+}
+
+app.get('/job/:id/', enforceSlash, function (req, res) {
   var id = parseInt(req.params.id);
 
   out.rpc.request('job-list')

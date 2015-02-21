@@ -8,6 +8,7 @@ var humanizeDuration = require("humanize-duration")
 var util = require('../util');
 var build = require('../build');
 var storage = require('../storage');
+var config = require('../config');
 var quota = require('../quota');
 var dependencies = require('../dependencies');
 var Record = require('./record');
@@ -252,6 +253,10 @@ var rpcSpec = {
     //     preserve: false
     //   });
     // })
+  },
+
+  'target-plan': function (rpc, ref) {
+    return Promise.resolve(config.getPlan(ref.id));
   },
 
   'cache': function (rpc, ref) {

@@ -46,7 +46,7 @@ block body
         td
           =pr.head.sha.slice(0, 8)
         td
-          form(method="POST" action="/merge/"+org+"/"+repo+"/"+pr.number)
+          form(method="POST" action="/merge/"+org+"/"+repo+"/"+pr.head.sha)
             input(type="hidden" name="reviewer" value=user)
-            input(type="hidden" name="source" value=pr.head.sha)
+            input(type="hidden" name="number" value=pr.number)
             input(type="submit" value="r+")

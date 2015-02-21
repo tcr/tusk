@@ -83,6 +83,9 @@ block body
   section#job-info
     h2 Job ##{id} <span id="loading"></span>
 
+    p
+      a(href='/target/' + job.ref.id) [ target #{job.ref.id} ]
+
     if job.end
       p
         | Elapsed time: 
@@ -92,6 +95,12 @@ block body
       p
         a(href='artifact')
           | [ Download build artifact ]
+
+    ul
+      if job.finished
+        li Finished
+      if job.error
+        li Errored :(
 
     form(action="./cancel", method="post")
       button(type="submit") Cancel job

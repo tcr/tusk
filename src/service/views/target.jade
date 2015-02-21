@@ -1,0 +1,59 @@
+extends ./layout.jade
+
+extend layout
+block style
+  style.
+    a {
+      text-decoration: none;
+    }
+    table.pr-list {
+      width: 100%;
+      max-width: 1280px;
+    }
+    .pr-list img {
+      vertical-align: middle;
+      margin-right: 1em;
+    }
+    table.pr-list td {
+      height: 40px;
+      padding: 8px;
+      border-top: 1px solid #ddd
+    }
+    .pr-id {
+      font-size: 200%;
+    }
+    .pr-list tr:target {
+      background: #ffffee;
+    }
+
+block body
+  h2= ref.id
+
+  form(action="build", method="post")
+    button(type="submit") Build target
+
+  if org && repo
+    p
+      a(href="http://github.com/" + org + '/' + repo) [ Source Code ]
+
+  if prs != null
+    table.pr-list
+      each pr in prs
+        tr(id=pr.number)
+          td.pr-id
+            a(href=pr.html_url)
+              ="#"+pr.number
+          td
+            img(src=pr.user.avatar_url+'?s=40' width=40 height=40)
+            a(href=pr.user.html_url)
+              =pr.user.login
+          td.title
+            a(href=pr.html_url)
+              =pr.title
+          td
+            =pr.head.sha.slice(0, 8)
+          td
+            form(method="POST" action="/target/"+ref.id+"/merge/"+pr.head.ref)
+              input(type="hidden" name="reviewer" value=user)
+              input(type="hidden" name="number" value=pr.number)
+              input(type="submit" value="r+")
