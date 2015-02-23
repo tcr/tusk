@@ -1,24 +1,24 @@
 pre { color: white;padding: 16px 20px; }
 html, body { background: #222; padding: 0; margin: 0; }
 /* Color scheme from travis-ci */
-.ansi .bold { font-weight: bold; }
+.ansi .bold { text-shadow: 1px 0 0 #fff; }
 .ansi .italic { font-style: italic; }
 .ansi .black { color: #4e4e4e; }
-.ansi .black.bold { color: #7c7c7c; }
+.ansi .black.bold { text-shadow: 1px 0 0 #7c7c7c; }
 .ansi .red { color: #ff6c60; }
-.ansi .red.bold { color: #ffb6b0; }
+.ansi .red.bold { text-shadow: 1px 0 0 #ffb6b0; }
 .ansi .green { color: #a8ff60; }
-.ansi .green.bold { color: #ceffab; }
+.ansi .green.bold { text-shadow: 1px 0 0 #ceffab; }
 .ansi .yellow { color: #ffffb6; }
-.ansi .yellow.bold { color: #ffffcb; }
+.ansi .yellow.bold { text-shadow: 1px 0 0 #ffffcb; }
 .ansi .blue { color: #96cbfe; }
-.ansi .blue.bold { color: #b5dcfe; }
+.ansi .blue.bold { text-shadow: 1px 0 0 #b5dcfe; }
 .ansi .magenta { color: #ff73fd; }
-.ansi .magenta.bold { color: #ff9cfe; }
+.ansi .magenta.bold { text-shadow: 1px 0 0 #ff9cfe; }
 .ansi .cyan { color: #c6c5fe; }
 .ansi .cyan { color: #dfdffe; }
 .ansi .white { color: #eeeeee; }
-.ansi .white.bold { color: white; }
+.ansi .white.bold { text-shadow: 1px 0 0 white; }
 .ansi .bg-black { background-color: #4e4e4e; }
 .ansi .bg-red { background-color: #ff6c60; }
 .ansi .bg-green { background-color: #a8ff60; }
