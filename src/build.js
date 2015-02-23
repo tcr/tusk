@@ -17,13 +17,15 @@ var dependencies = require('./dependencies');
 
 var root = path.join(__dirname, '/../vms');
 
-function vagrantenv (sha, zone) {
+function vagrantenv (sha, zone, winpass, image) {
   var conf = config.read();
   return [
     'TUSK_NAME=tusk-' + sha,
     'TUSK_PROJECT_ID=' + conf.gcloud.project_id,
     'TUSK_CLIENT_EMAIL=' + conf.gcloud.client_email,
     'TUSK_ZONE=' + zone,
+    'TUSK_WIN_PASS=' + (winpass || ''),
+    image ? 'TUSK_IMAGE=' + image : '',
   ].join('\n');
 }
 
@@ -70,7 +72,7 @@ function buildStatus (id, next) {
 function allocate (ref, opts) {
   var sha = util.refSha(ref);
   var cwd = __dirname + '/../vms/' + sha;
-  var play = playbook.generate(ref, opts.merge);
+  var play = playbook.generate(ref, opts.merge, opts.winpass);
 
   return Promise.resolve()
   .cancellable()
@@ -102,7 +104,7 @@ function allocate (ref, opts) {
       var target = targets[0];
       var zone = target.gcloud.region + '-' + target.gcloud.zone;
       console.log('targeting', zone);
-      fs.writeFileSync(cwd + '/.env', vagrantenv(sha, zone), 'utf-8');
+      fs.writeFileSync(cwd + '/.env', vagrantenv(sha, zone, opts.winpass, config.getPlan(ref.id).build.image || ''), 'utf-8');
     })
     .then(function () {
       console.log('up');

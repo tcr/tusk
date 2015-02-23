@@ -2,6 +2,8 @@ Vagrant.configure("2") do |config|
   config.env.enable
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
+  iswindows = ENV.fetch('TUSK_IMAGE', '').include? "windows"
+
   config.vm.provider :google do |google, override|
     override.vm.box = "gce"
 
@@ -12,15 +14,37 @@ Vagrant.configure("2") do |config|
     google.service_accounts = ["compute"]
     google.machine_type = "n1-highmem-16"
     google.zone = ENV.fetch('TUSK_ZONE', 'us-central1-b')
+    google.disk_size = 100
 
-    override.ssh.username = "tim"
-    #override.ssh.private_key_path = "~/.ssh/id_rsa"
-    override.ssh.private_key_path = "~/.ssh/google_compute_engine"
+    if ENV.key?('TUSK_IMAGE')
+      google.image = ENV['TUSK_IMAGE']
+    end
+
+    if iswindows
+      google.metadata = {
+        "windows-startup-script-ps1" => File.read('./winrm-setup.ps1'),
+        "gce-initial-windows-user" => "tim",
+        "gce-initial-windows-password" => ENV['TUSK_WIN_PASS']
+      }
+    else
+      override.ssh.username = "tim"
+      #override.ssh.private_key_path = "~/.ssh/id_rsa"
+      override.ssh.private_key_path = "~/.ssh/google_compute_engine"
+    end
   end
 
   config.vm.provision "ansible" do |ansible|
     ansible.playbook = "./playbook.yml"
     config.ssh.forward_agent = true
     ansible.raw_ssh_args = ['-o UserKnownHostsFile=/dev/null -o ForwardAgent=yes']
+
+    if iswindows
+      ansible.extra_vars = {
+        ansible_ssh_user: "tim",
+        ansible_ssh_pass: ENV['TUSK_WIN_PASS'],
+        ansible_ssh_port: 5986,
+        ansible_connection: "winrm",
+      }
+    end
   end
 end

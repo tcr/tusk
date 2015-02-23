@@ -10,7 +10,7 @@ var util = require('./util');
 var config = require('./config');
 var dependencies = require('./dependencies');
 
-/* pub */ function generate (ref, merge) {
+/* pub */ function generate (ref, merge, winpass) {
   var sha = util.refSha(ref);
   console.log('Generating playbook for', ref);
   console.log('sha=', sha);
@@ -22,6 +22,18 @@ var dependencies = require('./dependencies');
 
   setup['hosts'] = 'all';
 
+  var basevars = util.clone(ref);
+
+  var iswindows = openwrt.build.image && openwrt.build.image.indexOf('windows') > -1;
+
+  // TODO remove this
+  function dummy () {
+    return {
+      'hosts': 'all',
+      'tasks': [],
+    };
+  }
+
   tusk_git['hosts'] = 'all';
   if (merge) {
     var merge_repo = merge && (merge.repo || openwrt.build.source);
@@ -29,21 +41,21 @@ var dependencies = require('./dependencies');
 
     console.error('Merging:', merge_repo, 'ref=' + merge_ref);
 
-    tusk_git.vars = {
+    tusk_git.vars = util.combine(basevars, {
       git_merge: {
         repo: merge_repo,
         ref: merge_ref,
       },
-    };
+    });
   } else {
     console.error('No merging.');
   }
 
   return yaml.dump([
-    setup,
-    {
+    iswindows ? dummy() : setup,
+    iswindows ? dummy() : {
       "hosts": "all",
-      "vars": util.clone(ref),
+      "vars": util.clone(basevars),
       "tasks": [].concat.apply([], (openwrt.build.dependencies || []).map(function (k) {
         var ref = dependencies.dependencyRef(k);
         var sha = util.refSha(ref);
@@ -75,9 +87,9 @@ var dependencies = require('./dependencies');
         ];
       }))
     },
-    {
+    iswindows ? dummy() : {
       "hosts": "all",
-      "vars": util.clone(ref),
+      "vars": util.clone(basevars),
       "tasks": openwrt.build.source ? (function (repo) {
         var source = typeof repo == 'string' ? repo : repo.repo;
         var commit = typeof repo == 'string' ? repo.split('#')[1] || 'master' : repo.commit;
@@ -106,28 +118,28 @@ var dependencies = require('./dependencies');
         }];
       })(openwrt.build.source) : []
     },
-    tusk_git,
+    iswindows ? dummy() : tusk_git,
     // TODO screen roles
     {
       "hosts": "all",
-      "vars": util.clone(ref),
+      "vars": util.clone(basevars),
       "sudo": true,
       "roles": openwrt['build'].roles || [],
     },
     {
       "hosts": "all",
-      "vars": util.clone(ref),
+      "vars": util.clone(basevars),
       "tasks": openwrt['build'].setup || [],
     },
     {
       "hosts": "all",
-      "vars": util.clone(ref),
+      "vars": util.clone(basevars),
       "tasks": openwrt['build'].tasks || [],
     },
-    {
+    iswindows ? dummy() : {
       "hosts": "all",
       "sudo": true,
-      "vars": util.combine(util.combine(ref, {
+      "vars": util.combine(util.combine(basevars, {
         "sha": sha
       }), {
         gs_access_key: config.read().gstorage.key,
