@@ -31,6 +31,7 @@ var dependencies = require('./dependencies');
     return {
       'hosts': 'all',
       'tasks': [],
+      "gather_facts": false,
     };
   }
 
@@ -55,6 +56,7 @@ var dependencies = require('./dependencies');
     iswindows ? dummy() : setup,
     iswindows ? dummy() : {
       "hosts": "all",
+      "gather_facts": false,
       "vars": util.clone(basevars),
       "tasks": [].concat.apply([], (openwrt.build.dependencies || []).map(function (k) {
         var ref = dependencies.dependencyRef(k);
@@ -89,6 +91,7 @@ var dependencies = require('./dependencies');
     },
     iswindows ? dummy() : {
       "hosts": "all",
+      "gather_facts": false,
       "vars": util.clone(basevars),
       "tasks": openwrt.build.source ? (function (repo) {
         var source = typeof repo == 'string' ? repo : repo.repo;
@@ -122,6 +125,7 @@ var dependencies = require('./dependencies');
     // TODO screen roles
     {
       "hosts": "all",
+      "gather_facts": false,
       "vars": util.clone(basevars),
       "sudo": true,
       "roles": openwrt['build'].roles || [],
@@ -136,7 +140,7 @@ var dependencies = require('./dependencies');
       "vars": util.clone(basevars),
       "tasks": openwrt['build'].tasks || [],
     },
-    iswindows ? dummy() : {
+    {
       "hosts": "all",
       "sudo": true,
       "vars": util.combine(util.combine(basevars, {

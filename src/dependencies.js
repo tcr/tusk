@@ -74,9 +74,9 @@ function getCachedStatus (graph, hash) {
   var hash = util.refSha;
   return listDependencies(ref)
   .then(function (graph) {
-    return filterCache(graph)
+    return filterCached(graph)
   })
-  .then(function (graph) {
+  .then(function (pruned) {
     // Create promises network.
     return util.memoize(hash, function (ref) {
       var connections = graphs.findConnections(pruned, ref, util.refSha);

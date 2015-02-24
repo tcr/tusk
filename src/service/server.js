@@ -24,7 +24,6 @@ function jobOutput (id) {
 
 var currentAllocator = Promise.resolve();
 function allocator (ref, opts) {
-  opts.winpass = "($*rh28HS48!";
   return currentAllocator = currentAllocator
   .then(function () {
     return build.allocate(ref, opts)

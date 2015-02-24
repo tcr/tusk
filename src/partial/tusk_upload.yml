@@ -1,21 +1,40 @@
 #- name: tar results
 #  run: cmd="tar -czvf /tusk/result.tar.gz -C /tusk/result ."
 
-- name: install pip
+- name: install pip (via apt)
   apt: name=python-pip
-- name: install boto
+  when: ansible_system == "Linux" or ansible_system == "Darwin"
+- name: install pip (via choco)
+  win_chocolatey: name=pip state=present
+  when: ansible_system == "Win32NT"
+
+- name: install boto (posix)
   pip: name=boto
+  when: "ansible_system != \"Win32NT\""
+- name: install boto (windows)
+  raw: pip install boto
+  when: "ansible_system == \"Win32NT\""
 
 - name: bundle
   run: cmd="[[ -e /tusk/result.tar.gz ]] || tar -czvf /tusk/result.tar.gz -C /tusk/result . || true"
+  when: "ansible_system != \"Win32NT\""
+
+- name: upload to gstorage
+  gc_storage: bucket=tusk object={{ sha }}.tar.gz src=c:\\Users\\tim\\node-usb\\build\\shyp\\usb-shyp-win32-x64-1.0.5.tgz mode=put permission=public-read
+  args:
+    gs_access_key: "{{ gs_access_key }}"
+    gs_secret_key: "{{ gs_secret_key }}"
+  when: "ansible_system == \"Win32NT\""
+
 - name: upload to gstorage
   gc_storage: bucket=tusk object={{ sha }}.tar.gz src=/tusk/result.tar.gz mode=put permission=public-read
   args:
     gs_access_key: "{{ gs_access_key }}"
     gs_secret_key: "{{ gs_secret_key }}"
+  when: "ansible_system != \"Win32NT\""
 
 - name: push
   sudo: false
   run: cd="/tusk/source" cmd="git push origin {{ item }}"
   with_items: tusk_push
-  when: tusk_push is defined
+  when: tusk_push is defined and (ansible_system == "Linux" or ansible_system == "Darwin")

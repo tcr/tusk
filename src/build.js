@@ -72,7 +72,9 @@ function buildStatus (id, next) {
 function allocate (ref, opts) {
   var sha = util.refSha(ref);
   var cwd = __dirname + '/../vms/' + sha;
-  var play = playbook.generate(ref, opts.merge, opts.winpass);
+  var winpass = "($*rh28HS48!";
+
+  var play = playbook.generate(ref, opts.merge, winpass);
 
   return Promise.resolve()
   .cancellable()
@@ -104,7 +106,7 @@ function allocate (ref, opts) {
       var target = targets[0];
       var zone = target.gcloud.region + '-' + target.gcloud.zone;
       console.log('targeting', zone);
-      fs.writeFileSync(cwd + '/.env', vagrantenv(sha, zone, opts.winpass, config.getPlan(ref.id).build.image || ''), 'utf-8');
+      fs.writeFileSync(cwd + '/.env', vagrantenv(sha, zone, winpass, config.getPlan(ref.id).build.image || ''), 'utf-8');
     })
     .then(function () {
       console.log('up');
