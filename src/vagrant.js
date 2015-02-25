@@ -79,7 +79,7 @@ function run (args, name, cwd, opts) {
   }
   opts = opts || {};
 
-  return run(['vagrant', 'up', '--provider=google', '--no-provision', '--color'], 'vagrant up', cwd, opts)
+  return run(['vagrant', 'up', '--provider=' + opts.provider, '--no-provision', '--color'], 'vagrant up', cwd, opts)
   .nodeify(next);
 }
 

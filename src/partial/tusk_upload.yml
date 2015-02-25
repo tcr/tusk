@@ -3,7 +3,7 @@
 
 - name: install pip (via apt)
   apt: name=python-pip
-  when: ansible_system == "Linux" or ansible_system == "Darwin"
+  when: ansible_system == "Linux"
 - name: install pip (via choco)
   win_chocolatey: name=pip state=present
   when: ansible_system == "Win32NT"
@@ -17,7 +17,7 @@
 
 - name: bundle
   run: cmd="[[ -e /tusk/result.tar.gz ]] || tar -czvf /tusk/result.tar.gz -C /tusk/result . || true"
-  when: "ansible_system != \"Win32NT\""
+  when: "ansible_system == \"Linux\""
 
 - name: upload to gstorage
   gc_storage: bucket=tusk object={{ sha }}.tar.gz src=c:\\Users\\tim\\node-usb\\build\\shyp\\usb-shyp-win32-x64-1.0.5.tgz mode=put permission=public-read
@@ -31,7 +31,14 @@
   args:
     gs_access_key: "{{ gs_access_key }}"
     gs_secret_key: "{{ gs_secret_key }}"
-  when: "ansible_system != \"Win32NT\""
+  when: "ansible_system == \"Linux\""
+
+- name: upload to gstorage
+  gc_storage: bucket=tusk object={{ sha }}.tar.gz src={{ temp.stdout }}/node-usb/build/shyp/usb-shyp-darwin-x64-1.0.5.tgz mode=put permission=public-read
+  args:
+    gs_access_key: "{{ gs_access_key }}"
+    gs_secret_key: "{{ gs_secret_key }}"
+  when: "ansible_system == \"Darwin\""
 
 - name: push
   sudo: false

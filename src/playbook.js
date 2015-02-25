@@ -26,6 +26,10 @@ var dependencies = require('./dependencies');
 
   var iswindows = openwrt.build.image && openwrt.build.image.indexOf('windows') > -1;
 
+  if (openwrt.build.image == 'localhost') {
+    iswindows = true;
+  }
+
   // TODO remove this
   function dummy () {
     return {
@@ -142,7 +146,7 @@ var dependencies = require('./dependencies');
     },
     {
       "hosts": "all",
-      "sudo": true,
+      "sudo": !iswindows,
       "vars": util.combine(util.combine(basevars, {
         "sha": sha
       }), {
