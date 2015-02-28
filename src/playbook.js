@@ -15,11 +15,13 @@ var dependencies = require('./dependencies');
   console.log('Generating playbook for', ref);
   console.log('sha=', sha);
 
+  var tusk_init = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_init.yml'));
   var setup = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_setup.yml'));
   var tusk_git = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_git.yml'));
   var upload = yaml.safeLoad(fs.readFileSync(__dirname + '/partial/tusk_upload.yml'));
   var openwrt = config.getPlan(ref.id);
 
+  tusk_init['hosts'] = 'all';
   setup['hosts'] = 'all';
 
   var basevars = util.clone(ref);
@@ -57,6 +59,7 @@ var dependencies = require('./dependencies');
   }
 
   return yaml.dump([
+    tusk_init,
     iswindows ? dummy() : setup,
     iswindows ? dummy() : {
       "hosts": "all",

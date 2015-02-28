@@ -1,19 +1,44 @@
 extends ./layout.jade
 
+block style
+  style.
+    #body { padding: 15px; }
+    #jobs, #jobs li {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    #jobs li {
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      padding: 10px 15px;
+      cursor: pointer;
+    }
+    #jobs li.complete {
+      background: #cfc;
+    }
+    #jobs li.complete.error {
+      background: #fcc;
+    }
+  script.
+    $(function () {
+      $('body').on('click', '#jobs li', function () {
+        window.location.href = $(this).find('a').attr('href');
+      });
+    })
+
 block body
   h2 jobs
-  ul
-    each job in jobs
-      li 
+  ul#jobs
+    each job in jobs.reverse()
+      li(class=(job.finished ? "complete " : "") + (job.error ? 'error ' : ''))
         a(href="/job/" + job.id)
           b= job.ref.id
           |  
           = util.refSha(job.ref)
-          |  
-        if job.finished
-          | (complete)
         if job.end
           br
+          | finished in 
           = humanizeDuration(Math.floor((job.end - job.start) / 1e3)*1e3)
   
   h2 targets

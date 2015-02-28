@@ -16,6 +16,7 @@ if (require.main === module) {
 Usage:\n\
   tusk build <id> [--input=<arg>]... [--force] [--preserve] [--merge=<repo>]\n\
   tusk cache <id> [--input=<arg>]... [--delete] [--force]\n\
+  tusk shell <id> [--input=<arg>]...\n\
   tusk dependencies <id> [--detail]\n\
   tusk gc\n\
   tusk server\n\
@@ -54,6 +55,19 @@ Options:\n\
     cmdDependenies(opts);
   } else if (opts.cache) {
     cmdCache(opts, ref);
+  } else if (opts.shell) {
+
+
+var spawn = require('child_process').spawn;
+
+var proc = spawn('vagrant', ['winrm'], {
+  stdio: 'inherit',
+  cwd: __dirname + '/../vms/' + require('./util').refSha(ref),
+});
+proc.on('exit', function (code) {
+  process.exit(code);
+});
+
   }
 }
 

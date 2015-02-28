@@ -17,28 +17,14 @@
 
 - name: bundle
   run: cmd="[[ -e /tusk/result.tar.gz ]] || tar -czvf /tusk/result.tar.gz -C /tusk/result . || true"
-  when: "ansible_system == \"Linux\""
+  when: ansible_system == "Linux"
 
 - name: upload to gstorage
-  gc_storage: bucket=tusk object={{ sha }}.tar.gz src=c:\\Users\\tim\\node-usb\\build\\shyp\\usb-shyp-win32-x64-1.0.5.tgz mode=put permission=public-read
+  gc_storage: bucket=tusk object={{ sha }}.tar.gz src={{ tusk_artifact }} mode=put permission=public-read
   args:
     gs_access_key: "{{ gs_access_key }}"
     gs_secret_key: "{{ gs_secret_key }}"
-  when: "ansible_system == \"Win32NT\""
-
-- name: upload to gstorage
-  gc_storage: bucket=tusk object={{ sha }}.tar.gz src=/tusk/result.tar.gz mode=put permission=public-read
-  args:
-    gs_access_key: "{{ gs_access_key }}"
-    gs_secret_key: "{{ gs_secret_key }}"
-  when: "ansible_system == \"Linux\""
-
-- name: upload to gstorage
-  gc_storage: bucket=tusk object={{ sha }}.tar.gz src={{ temp.stdout }}/node-usb/build/shyp/usb-shyp-darwin-x64-1.0.5.tgz mode=put permission=public-read
-  args:
-    gs_access_key: "{{ gs_access_key }}"
-    gs_secret_key: "{{ gs_secret_key }}"
-  when: "ansible_system == \"Darwin\""
+  when: tusk_artifact is defined
 
 - name: push
   sudo: false

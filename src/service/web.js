@@ -149,7 +149,7 @@ app.get('/target/:target', enforceSlash, function (req, res) {
 
     if (plan.build.source && plan.build.source.match(/github\.com/)) {
       console.log(plan.build.source);
-      var gh = plan.build.source.match(/github\.com[\/:]([^\/\.]+)\/([^\/\.]+)/);
+      var gh = plan.build.source.match(/github\.com[\/:]([^\/\.]+)\/([^\/]+?)(\.git)?$/);
       org = gh[1];
       repo = gh[2];
 
