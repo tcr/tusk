@@ -1,12 +1,18 @@
 tasks:
-  - set_fact: tusk_work="/tusk/work"
+  - shell: mktemp -d
+    register: temp
+    when: ansible_system == "Linux"
+  - set_fact: tusk_root="{{ temp.stdout }}"
     when: ansible_system == "Linux"
 
   - shell: mktemp -d -t tusk
     register: temp
     when: ansible_system == "Darwin"
-  - set_fact: tusk_work="{{ temp.stdout }}"
+  - set_fact: tusk_root="{{ temp.stdout }}"
     when: ansible_system == "Darwin"
 
-  - set_fact: tusk_work="c:\\Users\\tim"
+  - set_fact: tusk_root="c:/Users/tim"
     when: ansible_system == "Win32NT"
+
+  - set_fact: tusk_work="{{ tusk_root }}/work"
+  - file: path="{{ tusk_work }}" state=directory
