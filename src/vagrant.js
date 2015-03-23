@@ -27,6 +27,10 @@ function run (args, name, cwd, opts) {
   var killing = false;
 
   return new Promise(function (resolve, reject) {
+    if (args[1] == 'up' || args[1] == 'destroy') {
+      p.stdout.pipe(process.stdout, {end:false})
+      p.stderr.pipe(process.stderr, {end:false})
+    }
     if (opts.logger) {
       p.stdout.pipe(opts.logger, { end: false });
       p.stderr.pipe(opts.logger, { end: false });

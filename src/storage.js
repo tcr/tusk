@@ -13,7 +13,7 @@ function gc_storage (object, mode, next) {
       "-c", "local",
       "-m", "gc_storage",
       "-a",
-        "bucket=tusk " +
+        "bucket=technical-tusk " +
         // "object=9b934cf284d9b196f48b43876d3e01912797242c.tar.gz " +
         "object=" + object + " " +
         "mode=" + mode + " " +

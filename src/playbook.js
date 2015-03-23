@@ -10,6 +10,8 @@ var util = require('./util');
 var config = require('./config');
 var dependencies = require('./dependencies');
 
+var bucket = 'technical-tusk';
+
 /* pub */ function generate (ref, merge, winpass) {
   var sha = util.refSha(ref);
   console.log('Generating playbook for', ref);
@@ -74,7 +76,7 @@ var dependencies = require('./dependencies');
           {
             "name": "download " + ref.id,
             "get_url": {
-              "url": 'https://storage.googleapis.com/tusk/' + sha + '.tar.gz',
+              "url": 'https://storage.googleapis.com/' + bucket + '/' + sha + '.tar.gz',
               "dest": '/tmp/' + sha + '.tar.gz'
             },
           },

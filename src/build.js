@@ -17,6 +17,8 @@ var winpass = require('./winpass')
 
 var root = path.join(__dirname, '/../vms');
 
+var CORE_LIMIT = 16;
+
 function vagrantenv (sha, zone, pass, image) {
   var conf = config.read();
   return [
@@ -100,7 +102,7 @@ function allocate (ref, opts) {
     })
     .then(function () {
       console.error('Seeking resources...');
-      return Promise.promisify(quota.query)({ cores: 16 })
+      return Promise.promisify(quota.query)({ cores: CORE_LIMIT })
     })
     .then(function (targets) {
       if (targets.length == 0) {

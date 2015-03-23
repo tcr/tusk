@@ -59,6 +59,16 @@ rsync changes and deploy them as merged master
 rsync changes and dpeloy them as merged master
 we're on [incoming] if we issued a thing
 
+## setup
+
+```
+gcloud:
+    project_id: "..."
+    client_email: "...@developer.gserviceaccount.com"
+```
+
+See https://github.com/mitchellh/vagrant-google#google-cloud-platform-setup
+
 ## license
 
 MIT/ASL2

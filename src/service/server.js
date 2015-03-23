@@ -145,6 +145,7 @@ function jobhandle (id) {
       return allocator(row.ref, {
         logger: log,
         merge: row.merge,
+        preserve: true,
       })
     })
     .then(function () {

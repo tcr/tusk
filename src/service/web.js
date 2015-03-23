@@ -147,17 +147,20 @@ app.get('/target/:target', enforceSlash, function (req, res) {
   .then(function (plan) {
     var next = Promise.resolve(null), org = null, repo = null;
 
-    if (plan.build.source && plan.build.source.match(/github\.com/)) {
-      console.log(plan.build.source);
-      var gh = plan.build.source.match(/github\.com[\/:]([^\/\.]+)\/([^\/]+?)(\.git)?$/);
-      org = gh[1];
-      repo = gh[2];
+    if (plan.build.source) {
+      var source = typeof plan.build.source == 'string' ? plan.build.source : plan.build.source.repo;
+      if (typeof source == 'string' && source.match(/github\.com/)) {
+        console.log(source);
+        var gh = source.match(/github\.com[\/:]([^\/\.]+)\/([^\/]+?)(\.git)?$/);
+        org = gh[1];
+        repo = gh[2];
 
-      next = Promise.promisify(github.pullRequests.getAll)({
-        user: org,
-        repo: repo,
-        state: 'open'
-      });
+        next = Promise.promisify(github.pullRequests.getAll)({
+          user: org,
+          repo: repo,
+          state: 'open'
+        });
+      }
     }
 
     next.then(function (prs) {
