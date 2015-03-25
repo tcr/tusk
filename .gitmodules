@@ -1,0 +1,3 @@
+[submodule "template/library/ansible-tidy"]
+	path = template/library/ansible-tidy
+	url = https://github.com/rmarchei/ansible-tidy
