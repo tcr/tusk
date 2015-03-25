@@ -29,12 +29,16 @@ block style
 block body
   h2= ref.id
 
+  if artifact
+    a(href=artifact) [ Default build artifact ]
+
   form(action="build", method="post")
     button(type="submit") Build target
 
   if org && repo
+    h3 Source Repository
     p
-      a(href="http://github.com/" + org + '/' + repo) [ Source Code ]
+      a(href="http://github.com/" + org + '/' + repo)= "http://github.com/" + org + '/' + repo
 
   if prs != null
     table.pr-list

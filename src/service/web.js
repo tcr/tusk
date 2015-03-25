@@ -141,8 +141,10 @@ app.get('/', function (req, res) {
 })
 
 app.get('/target/:target', enforceSlash, function (req, res) {
+  var id = req.params.target;
+
   out.rpc.request('target-plan', {
-    id: req.params.target,
+    id: id,
   })
   .then(function (plan) {
     var next = Promise.resolve(null), org = null, repo = null;
@@ -150,7 +152,7 @@ app.get('/target/:target', enforceSlash, function (req, res) {
     if (plan.build.source) {
       var source = typeof plan.build.source == 'string' ? plan.build.source : plan.build.source.repo;
       if (typeof source == 'string' && source.match(/github\.com/)) {
-        console.log(source);
+        // console.log(source);
         var gh = source.match(/github\.com[\/:]([^\/\.]+)\/([^\/]+?)(\.git)?$/);
         org = gh[1];
         repo = gh[2];
@@ -163,15 +165,20 @@ app.get('/target/:target', enforceSlash, function (req, res) {
       }
     }
 
-    next.then(function (prs) {
-      console.log(prs);
-      res.render('target.jade', {
-        ref: { id: req.params.target },
-        org: org,
-        repo: repo,
-        prs: prs,
-      });
-    })
+    next
+    .then(function (prs) {
+      // console.log(id);
+      return out.rpc.request('cache', { id: id })
+      .then(function (artifact) {
+        res.render('target.jade', {
+          ref: { id: req.params.target },
+          org: org,
+          repo: repo,
+          prs: prs,
+          artifact: artifact,
+        });
+      })
+    });
   });
 })
 

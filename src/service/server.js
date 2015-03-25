@@ -145,12 +145,12 @@ function jobhandle (id) {
       return allocator(row.ref, {
         logger: log,
         merge: row.merge,
-        preserve: true,
       })
     })
     .then(function () {
       return build.execute(row.ref, {
         logger: log,
+        preserve: true,
       });
     })
     .catch(Promise.CancellationError, function (err) {
