@@ -5,9 +5,11 @@ var Readable = require('stream').Readable;
 var fs = require('fs');
 var path = require('path');
 
+var config = require('../config');
+
 function Record (name) {
   this.active = false;
-  this.path = path.join(__dirname, '..', '..', 'logs', name + '.log');
+  this.path = path.join(config.USER_LOGS, name + '.log');
 }
 
 Record.prototype.writeStream = function () {

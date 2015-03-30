@@ -15,7 +15,7 @@ var quota = require('./quota');
 var dependencies = require('./dependencies');
 var winpass = require('./winpass')
 
-var root = path.join(__dirname, '/../vms');
+var root = config.USER_VMS;
 
 var CORE_LIMIT = 16;
 
@@ -73,7 +73,7 @@ function buildStatus (id, next) {
 
 function allocate (ref, opts) {
   var sha = util.refSha(ref);
-  var cwd = __dirname + '/../vms/' + sha;
+  var cwd = path.join(config.USER_VMS, sha);
   
   var pass = winpass.generate();
   var image = config.getPlan(ref.id).build.image || '';
@@ -129,7 +129,7 @@ function allocate (ref, opts) {
   opts = opts || {};
 
   var sha = util.refSha(ref);
-  var cwd = __dirname + '/../vms/' + sha;
+  var cwd = path.join(config.USER_VMS, sha);
 
   console.log('provision')
   return vagrant.provision(cwd, opts)

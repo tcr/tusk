@@ -10,6 +10,7 @@ var storage = require('./storage');
 var util = require('./util');
 var dependencies = require('./dependencies');
 var ls = require('./ls');
+var config = require('./config');
 
 if (require.main === module) {
   var doc = '\
@@ -62,7 +63,7 @@ var spawn = require('child_process').spawn;
 
 var proc = spawn('vagrant', ['winrm'], {
   stdio: 'inherit',
-  cwd: __dirname + '/../vms/' + require('./util').refSha(ref),
+  cwd: config.USER_VMS + require('./util').refSha(ref),
 });
 proc.on('exit', function (code) {
   process.exit(code);
