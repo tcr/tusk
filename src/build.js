@@ -80,8 +80,6 @@ function allocate (ref, opts) {
 
   opts.provider = image == 'localhost' ? 'managed' : 'google';
 
-  var play = playbook.generate(ref, opts.merge, pass);
-
   return Promise.resolve()
   .cancellable()
   .then(function () {
@@ -98,7 +96,6 @@ function allocate (ref, opts) {
     .then(function () {
       wrench.rmdirSyncRecursive(cwd, true);
       wrench.copyDirSyncRecursive(__dirname + '/../template', cwd)
-      fs.writeFileSync(cwd + '/playbook.yml', play, 'utf-8');
     })
     .then(function () {
       console.error('Seeking resources...');
@@ -113,6 +110,27 @@ function allocate (ref, opts) {
       var zone = target.gcloud.region + '-' + target.gcloud.zone;
       console.log('targeting', zone);
       fs.writeFileSync(cwd + '/.env', vagrantenv(sha, zone, pass, image), 'utf-8');
+    
+      return new Promise(function (resolve, reject) {
+        var sha = util.refSha(ref);
+        var snapsha = playbook.planSetupSha(ref);
+        var p = spawn('gcloud', ['compute', 'disks', 'create', 'tusk-' + sha, '--zone', zone, '--source-snapshot', 'tusk-snap-' + snapsha]);
+        console.error('Looking for snapshot', snapsha);
+        p.on('exit', function (code) {
+          resolve(!code)
+        })
+        p.on('error', reject);
+      })
+      .then(function (skipinit) {
+        if (skipinit) {
+          console.error('Using existing snapshot as disk.');
+        } else {
+          console.error('No snapshot found. Setting up new VM.');
+        }
+
+        var play = playbook.generate(ref, opts.merge, pass, zone, skipinit);
+        fs.writeFileSync(cwd + '/playbook.yml', play, 'utf-8');
+      })
     })
     .then(function () {
       console.log('up');
