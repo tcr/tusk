@@ -1,5 +1,5 @@
 build:
-  source: git@bitbucket.org:timcameronryan/tusk.git
+  source: ssh://git@github.com/tcr/tusk.git
 
   roles:
     - nodesource.node
@@ -69,7 +69,7 @@ build:
     - name: node install
       run: cd="/tusk/work" cmd="npm install"
     - name: self-test
-      run: cd="/tusk/work" cmd="./src/cli.js build test-b --force"
+      run: cd="/tusk/work" cmd="./src/cli.js build test-a --force"
 
     - name: completion
       run: cmd="mkdir /tusk/result && echo success | tee -a /tusk/result/selftest"
