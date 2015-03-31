@@ -22,6 +22,7 @@ Usage:\n\
   tusk gc\n\
   tusk server\n\
   tusk web\n\
+  tusk vm <command> [<arg>]...\n\
   tusk resources [--match=<arg>]...\n\
   tusk -h | --help\n\
 \n\
@@ -40,7 +41,9 @@ Options:\n\
   });
   ref.id = opts['<id>'];
 
-  if (opts.server) {
+  if (opts.vm) {
+    require('./vm').call(opts['<command>'], opts['<arg>']);
+  } else if (opts.server) {
     require('./service/server.js');
   } else if (opts.web) {
     require('./service/web.js');
@@ -96,6 +99,7 @@ function cmdBuild (opts, ref) {
     }
 
     var buildopts = {
+      logger: process.stderr,
       preserve: opts['--preserve'],
       merge: opts['--merge'] ? {
         repo: opts['--merge'].replace(/\#.*$/, '') || null,

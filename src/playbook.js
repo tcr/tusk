@@ -3,6 +3,7 @@ var crypto = require('crypto');
 var yaml = require('js-yaml');
 var Map = require('es6-map');
 var colors = require('colors/safe');
+var stringify = require('json-stable-stringify');
 
 var storage = require('./storage');
 var Promise = require('bluebird');
@@ -12,7 +13,13 @@ var dependencies = require('./dependencies');
 
 var bucket = 'technical-tusk';
 
-/* pub */ function generate (ref, merge, winpass) {
+/* pub */ function planSetupSha (ref) {
+  var plan = config.getPlan(ref.id);
+  delete plan.tasks;
+  return util.sha1(stringify(plan));
+}
+
+/* pub */ function generate (ref, merge, winpass, zone, skipinit) {
   var sha = util.refSha(ref);
   console.log('Generating playbook for', ref);
   console.log('sha=', sha);
@@ -60,7 +67,9 @@ var bucket = 'technical-tusk';
     console.error('No merging.');
   }
 
-  return yaml.dump([
+  var snaphash = planSetupSha(ref);
+
+  return yaml.dump((skipinit ? [] : [
     tusk_init,
     iswindows ? dummy() : setup,
     iswindows ? dummy() : {
@@ -146,6 +155,32 @@ var bucket = 'technical-tusk';
     },
     {
       "hosts": "all",
+      "gather_facts": false,
+      "tasks": [
+        {
+          "name": "delete stale snapshot",
+          "run": {
+            "cmd": "gcloud compute snapshots delete tusk-snap-" + snaphash + " -q || true",
+          }
+        },
+        {
+          "name": "sync disk",
+          "sudo": true,
+          "run": {
+            "cmd": "sync",
+          }
+        },
+        {
+          "name": "create snapshot",
+          "run": {
+            "cmd": 'gcloud compute disks snapshot tusk-' + sha + " --snapshot-name tusk-snap-" + snaphash + " --zone " + zone,
+          },
+        }
+      ],
+    },
+  ]).concat([
+    {
+      "hosts": "all",
       "vars": util.clone(basevars),
       "tasks": openwrt['build'].tasks || [],
     },
@@ -160,7 +195,10 @@ var bucket = 'technical-tusk';
       }),
       "tasks": upload,
     },
-  ])
+  ]).filter(function (group) {
+    return (group.tasks && group.tasks.length) || (group.roles && group.roles.length);
+  }))
 }
 
+exports.planSetupSha = planSetupSha;
 exports.generate = generate;
