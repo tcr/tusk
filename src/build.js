@@ -95,6 +95,7 @@ function allocate (ref, opts) {
     .cancellable()
     .then(function () {
       wrench.rmdirSyncRecursive(cwd, true);
+      wrench.mkdirSyncRecursive(config.USER_VMS);
       wrench.copyDirSyncRecursive(__dirname + '/../template', cwd)
     })
     .then(function () {

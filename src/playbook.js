@@ -107,38 +107,6 @@ var bucket = 'technical-tusk';
         ];
       }))
     },
-    iswindows ? dummy() : {
-      "hosts": "all",
-      "gather_facts": false,
-      "vars": util.clone(basevars),
-      "tasks": openwrt.build.source ? (function (repo) {
-        var source = typeof repo == 'string' ? repo : repo.repo;
-        var commit = typeof repo == 'string' ? repo.split('#')[1] || 'master' : repo.commit;
-        return [
-        {
-          "name": "require git",
-          "apt": "name=git",
-          "sudo": true,
-        },
-        {
-          "name": "download " + source + '#' + commit,
-          "git": {
-            "repo": source,
-            "dest": "/tusk/source",
-            "recursive": false,
-            version: commit,
-          },
-        }, {
-          "name": "download " + source + '#' + commit,
-          "git": {
-            "repo": source,
-            "dest": "/tusk/source",
-            "recursive": true,
-            version: commit,
-          },
-        }];
-      })(openwrt.build.source) : []
-    },
     iswindows ? dummy() : tusk_git,
     // TODO screen roles
     {
@@ -179,6 +147,38 @@ var bucket = 'technical-tusk';
       ],
     },
   ]).concat([
+    iswindows ? dummy() : {
+      "hosts": "all",
+      "gather_facts": false,
+      "vars": util.clone(basevars),
+      "tasks": openwrt.build.source ? (function (repo) {
+        var source = typeof repo == 'string' ? repo : repo.repo;
+        var commit = typeof repo == 'string' ? repo.split('#')[1] || 'master' : repo.commit;
+        return [
+        {
+          "name": "require git",
+          "apt": "name=git",
+          "sudo": true,
+        },
+        {
+          "name": "download " + source + '#' + commit,
+          "git": {
+            "repo": source,
+            "dest": "/tusk/source",
+            "recursive": false,
+            version: commit,
+          },
+        }, {
+          "name": "download " + source + '#' + commit,
+          "git": {
+            "repo": source,
+            "dest": "/tusk/source",
+            "recursive": true,
+            version: commit,
+          },
+        }];
+      })(openwrt.build.source) : []
+    },
     {
       "hosts": "all",
       "vars": util.clone(basevars),

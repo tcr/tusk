@@ -65,7 +65,7 @@ build:
     - name: copy source
       run: cmd="cp -rf /tusk/source/. /tusk/work/"
     - name: copy config
-      copy: src=/Users/tim/Desktop/ts/v/config dest=/tusk/work
+      copy: src=/Users/tim/Desktop/tusk/config dest=/tusk/work
     - name: node install
       run: cd="/tusk/work" cmd="npm install"
     - name: self-test
