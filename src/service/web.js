@@ -246,6 +246,23 @@ app.get('/job/:id/log', function (req, res) {
     'Connection': 'keep-alive'
   });
 
+  res.write('<!DOCTYPE html>')
+  // res.write('');
+  // res.write('<script>doscroll = true; lastheight = document.body.scrollHeight; function tobottom () { doscroll && window.scrollTo(0, 1e7); lastheight = document.body.scrollHeight; }</script>');
+  // res.write('<script>
+  res.write('<script>var xhr = new XMLHttpRequest(); xhr.open("GET", "logstream", true); var last = 0; xhr.addEventListener("progress", function (e) { var chunk = xhr.responseText.slice(last); requestAnimationFrame(function () { document.write(chunk); scrollTo(0, 1e7); }); last = e.loaded; }); xhr.send();</script>');
+  res.write('<script>setTimeout(function () { document.write(' + JSON.stringify('<style>' + fs.readFileSync(__dirname + '/static/logstyle.css', 'utf-8') + '</style><pre class="ansi">') + '); }, 0); </script>');
+  // res.write('s.addEventListener("message", function(e) { requestAnimationFrame(function () { document.write(e.data); window.scrollTo(0, 1e7); }); })</script>');
+  res.end();
+});
+
+app.get('/job/:id/logstream', function (req, res) {
+  res.writeHead(200, {
+    'Content-Type': 'text/plain',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+
   var logstream = through(function (data) {
     log.push(data.toString('utf-8'));
   });
@@ -253,35 +270,27 @@ app.get('/job/:id/log', function (req, res) {
     logstream.queue(data);
   });
 
-  // var stream = out.plex.remoteStream('FS')
-  // var stream = fs.createReadStream(__dirname + '/../etc/ok/temp.txt');
-
-  res.write('<!DOCTYPE html>')
-  res.write('<style>' + fs.readFileSync(__dirname + '/static/logstyle.css', 'utf-8') + '</style>');
-  res.write('<script>doscroll = true; lastheight = document.body.scrollHeight; function tobottom () { doscroll && window.scrollTo(0, 1e7); lastheight = document.body.scrollHeight; }</script>');
-  res.write('<pre class="ansi">')
-
   // Polling operator
-  var id = setInterval(function () {
-    try {
-      res.write('<script>requestAnimationFrame(tobottom);</script>');
-    } catch (e) {
-      clearInterval(id);
-    }
-  }, 100);
+  // var id = setInterval(function () {
+  //   try {
+  //     res.write('<script>requestAnimationFrame(tobottom);</script>');
+  //   } catch (e) {
+  //     clearInterval(id);
+  //   }
+  // }, 100);
 
   res.on('error', function () {
     // ignore !
   })
 
+
   out.rpc.request('job-output', req.params.id)
   .then(function (stream) {
-    stream.pipe(logstream).pipe(res);
-    stream.on('end', function () {
-      clearInterval(id);
-    })
+    stream
+    .pipe(logstream)
+    .pipe(res);
   }, function (err) {
-    res.status(500).write('<div style="background: red; color: black">' + err.stack);
+    // res.status(500).write('<div style="background: red; color: black">' + err.stack);
     res.end();
   })
 });
