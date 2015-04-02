@@ -72,4 +72,4 @@ build:
       run: cd="/tusk/work" cmd="./src/cli.js build test-a --force"
 
     - name: completion
-      run: cmd="mkdir /tusk/result && echo success | tee -a /tusk/result/selftest"
+      run: cmd="echo success | tee -a /tusk/result/selftest"

@@ -32,7 +32,7 @@ Record.prototype.writeStream = function () {
     this.output.push(chunk, encoding);
     this.written += chunk.length;
   }.bind(this);
-  stream.on('finish', function () {
+  stream.on('end', function () {
     this.output.push(null);
     this.active = false;
   }.bind(this))

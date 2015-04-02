@@ -41,8 +41,7 @@ function vagrantenv (sha, zone, pass, image) {
     console.log('GCing', sha);
     return vagrant.destroy(vm, opts)
     .then(function (oh) {
-      console.log('ok');
-      return Promise.promisify(wrench.rmdirRecursive)(vm);
+      return Promise.promisify(wrench.rmdirRecursive)(vm)
     });
   })
 }
@@ -91,7 +90,7 @@ function allocate (ref, opts) {
   .then(function () {
     console.error('Starting build', sha);
 
-    return clean(sha)
+    return clean(sha, opts)
     .cancellable()
     .then(function () {
       wrench.rmdirSyncRecursive(cwd, true);
