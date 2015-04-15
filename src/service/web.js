@@ -175,7 +175,7 @@ app.get('/target/:target', enforceSlash, function (req, res) {
           org: org,
           repo: repo,
           prs: prs,
-          artifact: artifact,
+          artifact: artifact.url,
         });
       })
     });

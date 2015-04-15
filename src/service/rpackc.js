@@ -69,7 +69,7 @@ function RPC (use) {
       var handle = this.responses[buf.data.id];
       delete this.responses[buf.data.id];
       if (handle) {
-        if (buf.data.data) {
+        if (buf.data.data && ('resolved' in buf.data)) {
           buf.data.resolved ? handle.resolve(buf.data.data) : handle.reject(buf.data.data);
         } else if (buf.data.stream) {
           var id = buf.data.stream;

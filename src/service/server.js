@@ -262,7 +262,7 @@ var rpcSpec = {
 
   'cache': function (rpc, ref) {
     console.log('Querying cache', ref);
-    return storage.exists(ref);
+    return storage.isCached(ref);
   },
 
   'dependencies': function (rpc, ref) {
