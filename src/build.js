@@ -128,6 +128,7 @@ function allocate (ref, opts) {
           console.error('No snapshot found. Setting up new VM.');
         }
 
+        skipinit = false;
         var play = playbook.generate(ref, opts.merge, pass, zone, skipinit);
         fs.writeFileSync(cwd + '/playbook.yml', play, 'utf-8');
       })
