@@ -277,6 +277,22 @@ var rpcSpec = {
       return tree;
     });
   },
+
+  'die': function (rpc, ref) {
+    console.log('DEATH REQUESTED');
+    setTimeout(function () {
+      console.log('DYING');
+      process.exit(1);
+    }, 5000);
+    return Promise.resolve({});
+  },
+
+  'clean': function (rpc, ref) {
+    console.log('Resetting all');
+    return build.reset({
+      logger: process.stderr
+    });
+  },
   
 
    //  build.reset()

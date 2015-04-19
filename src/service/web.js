@@ -370,6 +370,31 @@ app.get('/job/:id/artifact', function(req, res, next) {
   });
 });
 
+app.get('/admin/killserver', function (req, res) {
+  out.rpc.request('die')
+  .then(function () {
+    res.write('Die request sent.');
+    res.end();
+  })
+})
+
+app.get('/admin/killclient', function (req, res) {
+  res.write('Dying brb.')
+  res.end();
+  setTimeout(function () {
+    res.write('Death.')
+    process.exit(1);
+  }, 3000);
+})
+
+app.get('/admin/clean', function (req, res) {
+  out.rpc.request('clean')
+  .finally(function () {
+    res.write('All VMs cleaned up.');
+    res.end();
+  })
+})
+
 app.use(express.static(__dirname + '/static'));
 
 app.use(function (req, res) {
