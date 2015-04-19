@@ -33,13 +33,26 @@ block body
     each job in jobs.reverse()
       li(class=(job.finished ? "complete " : "") + (job.error ? 'error ' : ''))
         a(href="/job/" + job.id)
-          b= job.ref.id
+          b Build SHA: #{util.refSha(job.ref)}
+        br
+        a(href="/target/" + job.id)
+          = job.ref.id
+        if job.ref.sha
           |  
-          = util.refSha(job.ref)
+          | (commit #{job.ref.sha.slice(0, 8)})
+        if !job.finished
+          br
+          | Time since start: #{humanizeDuration((((Date.now() - job.start)/1e3)|0)*1e3)}
         if job.end
           br
           | finished in 
           = humanizeDuration(Math.floor((job.end - job.start) / 1e3)*1e3)
+          if !job.error
+            |  
+            a(href="http://localhost:3000/job/" + job.id + "/artifact")
+              | [ download ]
+          else
+            |  with errors.
   
   h2 targets
   ul

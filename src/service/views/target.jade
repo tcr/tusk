@@ -6,15 +6,15 @@ block style
     a {
       text-decoration: none;
     }
-    table.pr-list {
+    table.commit-list {
       width: 100%;
       max-width: 1280px;
     }
-    .pr-list img {
+    .commit-list img {
       vertical-align: middle;
       margin-right: 1em;
     }
-    table.pr-list td {
+    table.commit-list td {
       height: 40px;
       padding: 8px;
       border-top: 1px solid #ddd
@@ -22,8 +22,11 @@ block style
     .pr-id {
       font-size: 200%;
     }
-    .pr-list tr:target {
+    .commit-list tr:target {
       background: #ffffee;
+    }
+    .commit-author {
+      white-space: nowrap;
     }
 
 block body
@@ -41,13 +44,13 @@ block body
       a(href="http://github.com/" + org + '/' + repo)= "http://github.com/" + org + '/' + repo
 
   if prs != null
-    table.pr-list
+    table.commit-list
       each pr in prs
         tr(id=pr.number)
           td.pr-id
             a(href=pr.html_url)
               ="#"+pr.number
-          td
+          td.commit-author
             img(src=pr.user.avatar_url+'?s=40' width=40 height=40)
             a(href=pr.user.html_url)
               =pr.user.login
@@ -61,3 +64,20 @@ block body
               input(type="hidden" name="reviewer" value=user)
               input(type="hidden" name="number" value=pr.number)
               input(type="submit" value="r+")
+
+  if commits != null
+    table.commit-list
+      each commit in commits
+        tr(id=commit.sha)
+          td.commit-author
+            img(src=commit.author.avatar_url+'?s=40' width=40 height=40)
+            a(href=commit.author.html_url)
+              =commit.author.login
+          td.title
+            a(href=commit.html_url)
+              =commit.commit.message.replace(/\n[\s\S]+$/, '')
+          td
+            =commit.sha.slice(0, 8)
+          td
+            form(method="POST" action="/target/"+ref.id+"/build/"+commit.sha)
+              input(type="submit" value="build")

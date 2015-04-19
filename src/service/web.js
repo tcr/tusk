@@ -140,51 +140,109 @@ app.get('/', function (req, res) {
   })
 })
 
-app.get('/target/:target', enforceSlash, function (req, res) {
-  var id = req.params.target;
-
-  out.rpc.request('target-plan', {
-    id: id,
-  })
+function withPlan (ref, source) {
+  return out.rpc.request('target-plan', ref)
   .then(function (plan) {
-    var next = Promise.resolve(null), org = null, repo = null;
-
     if (plan.build.source) {
       var source = typeof plan.build.source == 'string' ? plan.build.source : plan.build.source.repo;
       if (typeof source == 'string' && source.match(/github\.com/)) {
         // console.log(source);
         var gh = source.match(/github\.com[\/:]([^\/\.]+)\/([^\/]+?)(\.git)?$/);
-        org = gh[1];
-        repo = gh[2];
-
-        next = Promise.promisify(github.pullRequests.getAll)({
-          user: org,
-          repo: repo,
-          state: 'open'
-        });
+        if (gh && gh[1] && gh[2]) {
+          return Promise.resolve({
+            org: gh[1],
+            repo: gh[2],
+          })
+        }
       }
     }
 
-    next
+    return Promise.resolve(null);
+  })
+}
+
+app.get('/target/:target', enforceSlash, function (req, res) {
+  var id = req.params.target;
+
+  withPlan({
+    id: id,
+  })
+  .then(function (source) {
+    Promise.resolve()
+    .then(function () {
+      if (source) {
+        return Promise.promisify(github.pullRequests.getAll)({
+          user: source.org,
+          repo: source.repo,
+          state: 'open'
+        });
+      }
+    })
     .then(function (prs) {
       // console.log(id);
       return out.rpc.request('cache', { id: id })
       .then(function (artifact) {
         res.render('target.jade', {
-          ref: { id: req.params.target },
-          org: org,
-          repo: repo,
+          ref: { id: id },
+          org: source.org,
+          repo: source.repo,
           prs: prs,
           artifact: artifact.url,
         });
       })
     });
+  })
+})
+
+app.get('/target/:target/branch/:branch', function (req, res) {
+  var id = req.params.target;
+
+  withPlan({
+    id: id,
+  })
+  .then(function (source) {
+    if (!source) {
+      throw new Error('Repo does not exist.');
+    }
+
+    github.repos.getCommits({
+      user: source.org,
+      repo: source.repo,
+      sha: req.params.branch,
+    }, function (err, data) {
+      console.log(data[0]);
+      res.render('target.jade', {
+        ref: { id: id },
+        org: source.org,
+        repo: source.repo,
+        commits: data,
+      });
+    })
   });
 })
 
 app.post('/target/:target/build', function (req, res) {
   out.rpc.request('build', {
     ref: { id: req.params.target }
+  })
+  .then(function (id) {
+    console.error('Build process started.');
+    res.redirect('/job/' + id.id);
+  }, function (err) {
+    console.error('Build process finished with error.');
+    console.error(err);
+    res.status(500);
+    res.write(String(err.message || err));
+    res.end();
+  })
+})
+
+app.post('/target/:target/build/:sha', function (req, res) {
+  out.rpc.request('build', {
+    ref: {
+      id: req.params.target,
+      sha: req.params.sha
+    }
   })
   .then(function (id) {
     console.error('Build process started.');

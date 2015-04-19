@@ -154,6 +154,12 @@ var bucket = 'technical-tusk';
       "tasks": openwrt.build.source ? (function (repo) {
         var source = typeof repo == 'string' ? repo : repo.repo;
         var commit = typeof repo == 'string' ? repo.split('#')[1] || 'master' : repo.commit;
+
+        // Override sha
+        if (ref.sha) {
+          commit = ref.sha;
+        }
+
         return [
         {
           "name": "require git",

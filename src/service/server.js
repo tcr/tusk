@@ -96,7 +96,7 @@ function jobhandle (id) {
   var log = record.writeStream();
 
   log.write('[tusk] Build #' + id + ' started.\n');
-  log.write('[tusk] SHA: ' + sha + '\n');
+  log.write('[tusk] Build sha: ' + sha + '\n');
 
   console.log('1.');
 
