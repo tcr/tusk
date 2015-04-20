@@ -30,7 +30,7 @@ block style
 block body
   h2 jobs
   ul#jobs
-    each job in jobs.reverse()
+    each job in Object.values(jobs).reverse()
       li(class=(job.finished ? "complete " : "") + (job.error ? 'error ' : ''))
         a(href="/job/" + job.id)
           b Build SHA: #{util.refSha(job.ref)}

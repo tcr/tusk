@@ -13,7 +13,7 @@ var quota = require('../quota');
 var dependencies = require('../dependencies');
 var Record = require('./record');
 var rpackc = require('./rpackc');
-var table = require('./datastore').table;
+var store = require('./datastore');
 
 var currentjobs = {};
 
@@ -75,7 +75,7 @@ function allocator (ref, opts) {
 // }
 
 function addjob (ref, merge, force) {
-  return table('jobs').add({
+  return store.create('Job', {
     ref: ref,
     finished: false,
     error: false,
@@ -88,106 +88,110 @@ function addjob (ref, merge, force) {
 }
 
 function jobhandle (id) {
-  var row = table('jobs')[id];
-  console.log('Consuming job #' + id, row);
+  return store.find('Job', id)
+  .then(function (row) {
+    console.log('Consuming job #' + id, row);
 
-  var sha = util.refSha(row.ref);
-  var record = new Record(sha);
-  var log = record.writeStream();
+    var sha = util.refSha(row.ref);
+    var record = new Record(sha);
+    var log = record.writeStream();
 
-  log.write('[tusk] Build #' + id + ' started.\n');
-  log.write('[tusk] Build sha: ' + sha + '\n');
+    log.write('[tusk] Build #' + id + ' started.\n');
+    log.write('[tusk] Build sha: ' + sha + '\n');
 
-  console.log('1.');
+    console.log('1.');
 
-  var promise = Promise.resolve()
-  .cancellable()
-  .then(function () {
-    console.log('2.');
-    console.log('Check cache.');
-    // Check cache
-    return storage.isCached(row.ref)
-  })
-  .then(function (cache) {
-    console.log('Got dat cache', cache);
-    if (cache.cached && !row.force) {
-      log.write('[tusk] Build cached and complete.\n');
-      log.end();
-      row.finished = true;
-      return;
+    currentjobs[id] = {
+      record: record,
+      log: log,
+      promise: promise,
     }
 
-    console.log('finding deps');
-    log.write('[tusk] Finding dependencies...\n');
-    return dependencies.getImmediateDependencies(row.ref.id)
-    .then(function (deps) {
-      // Adds dependencies
-      console.log('Checking deps:', deps);
-      log.write('[tusk] Awaiting and adding dependencies...\n');
-      deps.forEach(function (dep) {
-        log.write('[tusk] Dep: ' + JSON.stringify(dep) + '\n');
-      })
-
-      return Promise.map(deps, function (dep) {
-        var id = addjob(dep, null)
-        row.dependencies.push(id);
-        return jobhandle(id);
-      })
+    var promise = Promise.resolve()
+    .cancellable()
+    .then(function () {
+      console.log('2.');
+      console.log('Check cache.');
+      // Check cache
+      return storage.isCached(row.ref)
     })
-    .then(function (deps) {
-      console.log('Deps completed for', row.ref, '.');
-      if (deps.length) {
-        log.write('[tusk] Dependencies forked.\n');
-      } else {
-        log.write('[tusk] No dependencies required.\n');
+    .then(function (cache) {
+      console.log('Got dat cache', cache);
+      if (cache.cached && !row.force) {
+        log.write('[tusk] Build cached and complete.\n');
+        log.end();
+        row.finished = true;
+        return;
       }
 
-      return allocator(row.ref, {
-        logger: log,
-        merge: row.merge,
+      console.log('finding deps');
+      log.write('[tusk] Finding dependencies...\n');
+      return dependencies.getImmediateDependencies(row.ref.id)
+      .then(function (deps) {
+        // Adds dependencies
+        console.log('Checking deps:', deps);
+        log.write('[tusk] Awaiting and adding dependencies...\n');
+        deps.forEach(function (dep) {
+          log.write('[tusk] Dep: ' + JSON.stringify(dep) + '\n');
+        })
+
+        return Promise.map(deps, function (dep) {
+          addjob(dep, null)
+          .then(function (job) {
+            row.dependencies.push(job.id);
+            return jobhandle(id);
+          })
+        })
       })
-    })
-    .then(function () {
-      return build.execute(row.ref, {
-        logger: log,
-        preserve: true,
+      .then(function (deps) {
+        console.log('Deps completed for', row.ref, '.');
+        if (deps.length) {
+          log.write('[tusk] Dependencies forked.\n');
+        } else {
+          log.write('[tusk] No dependencies required.\n');
+        }
+
+        return allocator(row.ref, {
+          logger: log,
+          merge: row.merge,
+        })
+      })
+      .then(function () {
+        return build.execute(row.ref, {
+          logger: log,
+          preserve: true,
+        });
+      })
+      .catch(Promise.CancellationError, function (err) {
+        console.log('Build cancelled!')
+        throw err;
+      })
+      .then(function (url) {
+        console.error('Build process finished.');
+        console.log(url);
+      }, function (err) {
+        console.error('Build process finished with error.');
+        console.error(err.stack || err);
+        row.error = err.stack;
+        return row.save();
+      })
+      .finally(function () {
+        row.end = Date.now();
+        row.finished = true;
+
+        console.log('Build finished.');
+        log.write('[tusk] Build finished.\n');
+        log.write('[tusk] Elapsed time: ' + humanizeDuration(row.end - row.start) + '\n');
+        log.end();
+        
+        // table('jobs').remove(row);
+        return row.save();
       });
     })
-    .catch(Promise.CancellationError, function (err) {
-      console.log('Build cancelled!')
-      throw err;
+    .catch(function (err) {
+      console.error('ERROR', err);
     })
-    .then(function (url) {
-      console.error('Build process finished.');
-      console.log(url);
-    }, function (err) {
-      console.error('Build process finished with error.');
-      console.error(err.stack || err);
-      row.error = err.stack;
-    })
-    .finally(function () {
-      row.end = Date.now();
-      row.finished = true;
-
-      console.log('Build finished.');
-      log.write('[tusk] Build finished.\n');
-      log.write('[tusk] Elapsed time: ' + humanizeDuration(row.end - row.start) + '\n');
-      log.end();
-      
-      // table('jobs').remove(row);
-    });
-  })
-  .catch(function (err) {
-    console.error('ERROR', err);
-  })
-
-  currentjobs[id] = {
-    record: record,
-    log: log,
-    promise: promise,
-  }
-
-  return promise;
+  });
 }
 
 var rpcSpec = {
@@ -210,15 +214,23 @@ var rpcSpec = {
   },
 
   'job-artifact': function (rpc, id) {
-    if (!table('jobs')[id]) {
+    return store.find('Job', id)
+    .then(function (row) {
+      return storage.isCached(row.ref);
+    }, function () {
       return Promise.reject(new Error('Job not found.'));
-    } else {
-      return storage.isCached(table('jobs')[id].ref);
-    }
+    });
   },
 
   'job-list': function (rpc) {
-    return Promise.resolve(table('jobs'));
+    return store.findAll('Job')
+    .then(function (jobs) {
+      var out = {};
+      jobs.forEach(function (job) {
+        out[job.id] = job.toJSON();
+      });
+      return out;
+    });
   },
 
   'job-output': function (rpc, id) {
@@ -235,10 +247,12 @@ var rpcSpec = {
       return Promise.reject(new Error('No ref specified.'));
     }
 
-    var id = addjob(opts.ref, opts.merge, true);
-    setImmediate(jobhandle, id);
-    return Promise.resolve({
-      id: id
+    return addjob(opts.ref, opts.merge, true)
+    .then(function (row) {
+      setImmediate(jobhandle, row.id);
+      return Promise.resolve({
+        id: row.id,
+      });
     });
 
     // var id = table('jobs').add({

@@ -14,6 +14,16 @@ var client = require('./client');
 var LogParse = require('./logparse');
 var ghauth = require('./github');
 
+Object.values = function (obj) {
+  var vals = [];
+  for( var key in obj ) {
+    if ( obj.hasOwnProperty(key) ) {
+      vals.push(obj[key]);
+    }
+  }
+  return vals;
+};
+
 var out = client.connect();
 
 var github = new GitHubAPI({
@@ -130,6 +140,7 @@ app.get('/', function (req, res) {
     plans: config.listPlans(),
   })
   .then(function (results) {
+    console.log(results);
     res.render('root', {
       title: 'Index',
       jobs: results.jobs,
@@ -184,8 +195,8 @@ app.get('/target/:target', enforceSlash, function (req, res) {
       .then(function (artifact) {
         res.render('target.jade', {
           ref: { id: id },
-          org: source.org,
-          repo: source.repo,
+          org: source && source.org,
+          repo: source && source.repo,
           prs: prs,
           artifact: artifact.url,
         });

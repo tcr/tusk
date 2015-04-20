@@ -6,6 +6,7 @@ var Promise = require('bluebird');
 var USER_PLANS = __dirname + '/../config/plan/';
 var USER_VMS = __dirname + '/../work/vms/';
 var USER_LOGS = __dirname + '/../work/logs/';
+var USER_DB = __dirname + '/../work/tusk.sqlite';
 var PLANS = __dirname + '/../plan/';
 
 function read () {
@@ -30,6 +31,7 @@ function listPlans (next) {
 exports.USER_PLANS = USER_PLANS;
 exports.USER_VMS = USER_VMS;
 exports.USER_LOGS = USER_LOGS;
+exports.USER_DB = USER_DB;
 exports.PLANS = PLANS;
 
 exports.read = read;
