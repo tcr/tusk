@@ -36,10 +36,11 @@ var bucket = 'technical-tusk';
   var basevars = util.clone(ref);
 
   var iswindows = openwrt.build.image && openwrt.build.image.indexOf('windows') > -1;
-
   if (openwrt.build.image == 'localhost') {
     iswindows = true;
   }
+
+  var skipsnapshot = true;
 
   // TODO remove this
   function dummy () {
@@ -121,7 +122,7 @@ var bucket = 'technical-tusk';
       "vars": util.clone(basevars),
       "tasks": openwrt['build'].setup || [],
     },
-    {
+    skipsnapshot ? dummy() : {
       "hosts": "all",
       "gather_facts": false,
       "tasks": [
