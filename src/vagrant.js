@@ -106,13 +106,6 @@ function run (args, name, cwd, opts) {
   opts = opts || {};
   
   return run(['vagrant', 'destroy', '-f', '--color'], 'vagrant destroy', cwd, opts)
-  // TODO remove this timeout when vagrant-google waits properly
-  .then(function () {
-    console.log('DELAYING 25s thanks google')
-    return new Promise(function (resolve, reject) {
-      setTimeout(resolve, 25*1000);
-    })
-  })
   .nodeify(next);
 }
 
