@@ -179,8 +179,7 @@ app.get('/target/:target', enforceSlash, function (req, res) {
     id: id,
   })
   .then(function (source) {
-    Promise.resolve()
-    .then(function () {
+    Promise.try(function () {
       if (source) {
         return Promise.promisify(github.pullRequests.getAll)({
           user: source.org,
@@ -202,6 +201,9 @@ app.get('/target/:target', enforceSlash, function (req, res) {
         });
       })
     });
+  }, function () {
+    res.status(404);
+    res.render('not_found');
   })
 })
 

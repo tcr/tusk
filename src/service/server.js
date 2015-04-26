@@ -272,12 +272,16 @@ var rpcSpec = {
   },
 
   'target-plan': function (rpc, ref) {
-    return Promise.resolve(config.getPlan(ref.id));
+    return Promise.try(function () {
+      return config.getPlan(ref.id);
+    });
   },
 
   'cache': function (rpc, ref) {
     console.log('Querying cache', ref);
-    return storage.isCached(ref);
+    return Promise.try(function () {
+      return storage.isCached(ref);
+    });
   },
 
   'dependencies': function (rpc, ref) {
