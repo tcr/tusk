@@ -202,6 +202,31 @@ app.get('/target/:target', enforceSlash, function (req, res) {
   })
 })
 
+app.get('/target/:target/branch/', function (req, res) {
+  var id = req.params.target;
+
+  withPlan({
+    id: id,
+  })
+  .then(function (source) {
+    if (!source) {
+      throw new Error('Repo does not exist.');
+    }
+
+    github.repos.getBranches({
+      user: source.org,
+      repo: source.repo,
+    }, function (err, branches) {
+      res.render('branches.jade', {
+        ref: { id: id },
+        org: source.org,
+        repo: source.repo,
+        branches: branches,
+      });
+    })
+  });
+});
+
 app.get('/target/:target/branch/:branch', function (req, res) {
   var id = req.params.target;
 
@@ -218,13 +243,17 @@ app.get('/target/:target/branch/:branch', function (req, res) {
       repo: source.repo,
       sha: req.params.branch,
     }, function (err, data) {
-      console.log(data[0]);
-      res.render('target.jade', {
-        ref: { id: id },
-        org: source.org,
-        repo: source.repo,
-        commits: data,
-      });
+      if (err || !data || !data[0]) {
+        res.render('not_found');
+      } else {
+        console.log(data[0]);
+        res.render('target.jade', {
+          ref: { id: id },
+          org: source.org,
+          repo: source.repo,
+          commits: data,
+        });
+      }
     })
   });
 })

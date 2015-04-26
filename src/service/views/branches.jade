@@ -1,0 +1,39 @@
+extends ./layout.jade
+
+extend layout
+block style
+  style.
+    a {
+      text-decoration: none;
+    }
+    table.commit-list {
+      width: 100%;
+      max-width: 1280px;
+    }
+    .commit-list img {
+      vertical-align: middle;
+      margin-right: 1em;
+    }
+    table.commit-list td {
+      height: 40px;
+      padding: 8px;
+      border-top: 1px solid #ddd
+    }
+    .pr-id {
+      font-size: 200%;
+    }
+    .commit-list tr:target {
+      background: #ffffee;
+    }
+    .commit-author {
+      white-space: nowrap;
+    }
+
+block body
+  h2= ref.id
+
+  ul
+    each branch in branches
+      li
+        a(href=branch.name)
+          = branch.name
