@@ -35,7 +35,7 @@ block body
         a(href="/job/" + job.id)
           b Build SHA: #{util.refSha(job.ref)}
         br
-        a(href="/target/" + job.id)
+        a(href="/target/" + job.ref.id)
           = job.ref.id
         if job.ref.sha
           |  
