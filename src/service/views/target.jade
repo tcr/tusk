@@ -64,7 +64,7 @@ block body
           td
             =pr.head.sha.slice(0, 8)
           td(style="white-space: pre")
-            form(method="POST" action="/target/"+ref.id+"/build/"+pr.head.ref, style="display: inline")
+            form(method="POST" action="/target/"+ref.id+"/build/"+pr.head.sha, style="display: inline")
               input(type="submit" value="build")
             form(method="POST" action="/target/"+ref.id+"/merge/"+pr.head.ref, style="display: inline")
               input(type="hidden" name="reviewer" value=user)

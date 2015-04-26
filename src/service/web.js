@@ -374,7 +374,8 @@ app.get('/job/:id/logstream', function (req, res) {
   res.writeHead(200, {
     'Content-Type': 'text/plain',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
+    'Connection': 'keep-alive',
+    'Transfer-Encoding': 'chunked',
   });
 
   var logstream = through(function (data) {
@@ -396,6 +397,8 @@ app.get('/job/:id/logstream', function (req, res) {
   res.on('error', function () {
     // ignore !
   })
+
+  res.write('<!--' + Array(8192+1).join(' ') + ' -->');
 
 
   out.rpc.request('job-output', req.params.id)
