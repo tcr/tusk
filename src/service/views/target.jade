@@ -32,9 +32,6 @@ block style
 block body
   h2= ref.id
 
-  if artifact
-    a(href=artifact) [ Default build artifact ]
-
   form(action="build", method="post")
     button(type="submit") Build target
 

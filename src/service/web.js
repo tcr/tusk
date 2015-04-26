@@ -189,17 +189,12 @@ app.get('/target/:target', enforceSlash, function (req, res) {
       }
     })
     .then(function (prs) {
-      // console.log(id);
-      return out.rpc.request('cache', { id: id })
-      .then(function (artifact) {
-        res.render('target.jade', {
-          ref: { id: id },
-          org: source && source.org,
-          repo: source && source.repo,
-          prs: prs,
-          artifact: artifact.url,
-        });
-      })
+      res.render('target.jade', {
+        ref: { id: id },
+        org: source && source.org,
+        repo: source && source.repo,
+        prs: prs,
+      });
     });
   }, function () {
     res.status(404);
