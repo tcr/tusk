@@ -98,6 +98,7 @@ function jobhandle (id) {
 
     log.write('[tusk] Build #' + id + ' started.\n');
     log.write('[tusk] Build sha: ' + sha + '\n');
+    log.write('[tusk] Build ref: ' + JSON.stringify(row.ref) + '\n');
 
     console.log('1.');
 
@@ -132,7 +133,7 @@ function jobhandle (id) {
         console.log('Checking deps:', deps);
         log.write('[tusk] Awaiting and adding dependencies...\n');
         deps.forEach(function (dep) {
-          log.write('[tusk] Dep: ' + JSON.stringify(dep) + '\n');
+          log.write('[tusk] - ' + JSON.stringify(dep) + '\n');
         })
 
         return Promise.map(deps, function (dep) {

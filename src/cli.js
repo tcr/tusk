@@ -64,7 +64,7 @@ Options:\n\
 
 var spawn = require('child_process').spawn;
 
-var proc = spawn('vagrant', ['winrm'], {
+var proc = spawn('vagrant', ['ssh'], {
   stdio: 'inherit',
   cwd: config.USER_VMS + require('./util').refSha(ref),
 });
