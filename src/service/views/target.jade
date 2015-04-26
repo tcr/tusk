@@ -35,15 +35,19 @@ block body
   form(action="build", method="post")
     button(type="submit") Build target
 
-  p
-    a(href="branch/") See Branches &rarr;
-
   if org && repo
     h3 Source Repository
     p
       a(href="http://github.com/" + org + '/' + repo)= "http://github.com/" + org + '/' + repo
 
+  p
+    a(href="/target/" + ref.id + "/branch/") See Branches &rarr;
+
+  p
+    a(href="/target/" + ref.id + "/prs/") See Pull Requests &rarr;
+
   if prs != null
+    h3 Pull Requests
     table.commit-list
       each pr in prs
         tr(id=pr.number)
@@ -59,13 +63,16 @@ block body
               =pr.title
           td
             =pr.head.sha.slice(0, 8)
-          td
-            form(method="POST" action="/target/"+ref.id+"/merge/"+pr.head.ref)
+          td(style="white-space: pre")
+            form(method="POST" action="/target/"+ref.id+"/build/"+pr.head.ref, style="display: inline")
+              input(type="submit" value="build")
+            form(method="POST" action="/target/"+ref.id+"/merge/"+pr.head.ref, style="display: inline")
               input(type="hidden" name="reviewer" value=user)
               input(type="hidden" name="number" value=pr.number)
               input(type="submit" value="r+")
 
   if commits != null
+    h3 Commits in branch #[code #{branch}]
     table.commit-list
       each commit in commits
         tr(id=commit.sha)

@@ -179,6 +179,24 @@ app.get('/target/:target', enforceSlash, function (req, res) {
     id: id,
   })
   .then(function (source) {
+    res.render('target.jade', {
+      ref: { id: id },
+      org: source && source.org,
+      repo: source && source.repo,
+    });
+  }, function () {
+    res.status(404);
+    res.render('not_found');
+  })
+})
+
+app.get('/target/:target/prs', enforceSlash, function (req, res) {
+  var id = req.params.target;
+
+  withPlan({
+    id: id,
+  })
+  .then(function (source) {
     Promise.try(function () {
       if (source) {
         return Promise.promisify(github.pullRequests.getAll)({
@@ -202,7 +220,7 @@ app.get('/target/:target', enforceSlash, function (req, res) {
   })
 })
 
-app.get('/target/:target/branch/', function (req, res) {
+app.get('/target/:target/branch/', enforceSlash, function (req, res) {
   var id = req.params.target;
 
   withPlan({
@@ -252,6 +270,7 @@ app.get('/target/:target/branch/:branch', function (req, res) {
           org: source.org,
           repo: source.repo,
           commits: data,
+          branch: req.params.branch,
         });
       }
     })
