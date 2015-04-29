@@ -2,7 +2,41 @@ extends ./layout.jade
 
 block style
   style.
-    #body { padding: 15px; }
+    html, body { margin: 0; padding: 0; flex-direction: column; }
+    html, body, #body { display: flex; flex-grow: 1; }
+    #body { flex-direction: row; flex-grow: 1; }
+
+    #sec-targets {
+      order: -1;
+      width: 240px;
+      min-width: 240px;
+      padding: 0 15px;
+      border-right: 1px solid #ccc;
+    }
+    #sec-jobs {
+      padding: 0 15px;
+      flex-grow: 1;
+    }
+
+    #targets, #targets > li {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    #targets > li a {
+      text-decoration: none;
+      display: block;
+      background: #eee;
+      padding: 8px 12px;
+      border-bottom: 4px solid white;
+    }
+
+    #targets > li a:hover {
+      background: #ddd;
+      text-decoration: underline;
+    }
+
     #jobs, #jobs li {
       list-style: none;
       padding: 0;
@@ -20,6 +54,11 @@ block style
     #jobs li.complete.error {
       background: #fcc;
     }
+
+    #sec-jobs {
+
+    }
+
   script.
     $(function () {
       $('body').on('click', '#jobs li', function () {
@@ -28,34 +67,36 @@ block style
     })
 
 block body
-  h2 jobs
-  ul#jobs
-    each job in Object.values(jobs).reverse()
-      li(class=(job.finished ? "complete " : "") + (job.error ? 'error ' : ''))
-        a(href="/job/" + job.id)
-          b Build SHA: #{util.refSha(job.ref)}
-        br
-        a(href="/target/" + job.ref.id)
-          = job.ref.id
-        if job.ref.sha
-          |  
-          | (commit #{job.ref.sha.slice(0, 8)})
-        if !job.finished
+  section#sec-jobs
+    h2 Jobs
+    ul#jobs
+      each job in Object.values(jobs).reverse()
+        li(class=(job.finished ? "complete " : "") + (job.error ? 'error ' : ''))
+          a(href="/job/" + job.id)
+            b Build SHA: #{util.refSha(job.ref)}
           br
-          | Time since start: #{humanizeDuration((((Date.now() - job.start)/1e3)|0)*1e3)}
-        if job.end
-          br
-          | finished in 
-          = humanizeDuration(Math.floor((job.end - job.start) / 1e3)*1e3)
-          if !job.error
+          a(href="/target/" + job.ref.id)
+            = job.ref.id
+          if job.ref.sha
             |  
-            a(href="http://localhost:3000/job/" + job.id + "/artifact")
-              | [ download ]
-          else
-            |  with errors.
+            | (commit #{job.ref.sha.slice(0, 8)})
+          if !job.finished
+            br
+            | Time since start: #{humanizeDuration((((Date.now() - job.start)/1e3)|0)*1e3)}
+          if job.end
+            br
+            | finished in 
+            = humanizeDuration(Math.floor((job.end - job.start) / 1e3)*1e3)
+            if !job.error
+              |  
+              a(href="http://localhost:3000/job/" + job.id + "/artifact")
+                | [ download ]
+            else
+              |  with errors.
   
-  h2 targets
-  ul
-    each id in plans
-      li
-        a(href="/target/" + id)= id
+  section#sec-targets
+    h2 Targets
+    ul#targets
+      each id in plans
+        li
+          a(href="/target/" + id)= id
