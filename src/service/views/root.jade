@@ -89,7 +89,7 @@ block body
             = humanizeDuration(Math.floor((job.end - job.start) / 1e3)*1e3)
             if !job.error
               |  
-              a(href="http://localhost:3000/job/" + job.id + "/artifact")
+              a(href="/job/" + job.id + "/artifact")
                 | [ download ]
             else
               |  with errors.
