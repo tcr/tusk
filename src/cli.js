@@ -76,6 +76,8 @@ proc.on('exit', function (code) {
 }
 
 function cmdGc (opts) {
+  process.stderr.setMaxListeners(0);
+
   build.reset({
     logger: process.stderr
   })
