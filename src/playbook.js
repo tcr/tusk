@@ -13,6 +13,34 @@ var dependencies = require('./dependencies');
 
 var bucket = 'technical-tusk';
 
+/* pub */ function normalizeRef (ref) {
+  if (ref.sha) {
+    return Promise.resolve(ref);
+  } else {
+    return Promise.try(function () {
+      var openwrt = config.getPlan(ref.id);
+      var repo = openwrt.build.source;
+      if (!repo) {
+        return ref;
+      }
+      var source = typeof repo == 'string' ? repo : repo.repo;
+      var commit = typeof repo == 'string' ? repo.split('#')[1] || 'master' : repo.commit;
+
+      return util.getRepositoryRefs(source)
+      .then(function (refs) {
+        if (refs[commit]) {
+          console.log('Matched', commit, 'to', refs[commit]);
+          ref.sha = refs[commit];
+        } else {
+          ref.sha = commit;
+        }
+
+        return ref;
+      })
+    });
+  }
+}
+
 /* pub */ function planSetupSha (ref) {
   var plan = config.getPlan(ref.id);
   delete plan.tasks;
@@ -69,6 +97,17 @@ var bucket = 'technical-tusk';
   }
 
   var snaphash = planSetupSha(ref);
+
+  if (openwrt.build.source) {
+    var repo = openwrt.build.source;
+    var source = typeof repo == 'string' ? repo : repo.repo;
+    var commit = typeof repo == 'string' ? repo.split('#')[1] || 'master' : repo.commit;
+  }
+
+  // Override sha
+  if (ref.sha) {
+    commit = ref.sha;
+  }
 
   return yaml.dump((skipinit ? [] : [
     tusk_init,
@@ -152,16 +191,7 @@ var bucket = 'technical-tusk';
       "hosts": "all",
       "gather_facts": false,
       "vars": util.clone(basevars),
-      "tasks": openwrt.build.source ? (function (repo) {
-        var source = typeof repo == 'string' ? repo : repo.repo;
-        var commit = typeof repo == 'string' ? repo.split('#')[1] || 'master' : repo.commit;
-
-        // Override sha
-        if (ref.sha) {
-          commit = ref.sha;
-        }
-
-        return [
+      "tasks": openwrt.build.source ? [
         {
           "name": "require git",
           "apt": "name=git",
@@ -183,8 +213,8 @@ var bucket = 'technical-tusk';
             "recursive": true,
             version: commit,
           },
-        }];
-      })(openwrt.build.source) : []
+        }
+      ] : []
     },
     {
       "hosts": "all",
@@ -207,5 +237,6 @@ var bucket = 'technical-tusk';
   }))
 }
 
+exports.normalizeRef = normalizeRef;
 exports.planSetupSha = planSetupSha;
 exports.generate = generate;

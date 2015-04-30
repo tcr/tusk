@@ -129,7 +129,9 @@ function allocate (ref, opts) {
         }
 
         skipinit = false;
-        var play = playbook.generate(ref, opts.merge, pass, zone, skipinit);
+        return playbook.generate(ref, opts.merge, pass, zone, skipinit);
+      })
+      .then(function (play) {
         fs.writeFileSync(cwd + '/playbook.yml', play, 'utf-8');
       })
     })

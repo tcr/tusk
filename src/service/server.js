@@ -11,6 +11,7 @@ var storage = require('../storage');
 var config = require('../config');
 var quota = require('../quota');
 var dependencies = require('../dependencies');
+var playbook = require('../playbook');
 var Record = require('./record');
 var rpackc = require('./rpackc');
 var store = require('./datastore');
@@ -248,11 +249,14 @@ var rpcSpec = {
       return Promise.reject(new Error('No ref specified.'));
     }
 
-    return addjob(opts.ref, opts.merge, true)
-    .then(function (row) {
-      setImmediate(jobhandle, row.id);
-      return Promise.resolve({
-        id: row.id,
+    return playbook.normalizeRef(opts.ref)
+    .then(function (ref) {
+      return addjob(ref, opts.merge, true)
+      .then(function (row) {
+        setImmediate(jobhandle, row.id);
+        return Promise.resolve({
+          id: row.id,
+        });
       });
     });
 

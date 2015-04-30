@@ -10,6 +10,7 @@ var Promise = require('bluebird');
 var util = require('./util');
 var config = require('./config');
 var graphs = require('./graphs');
+var playbook = require('./playbook');
 
 /* pub */ function dependencyRef (k) {
   if (typeof k == 'string') {
@@ -28,6 +29,9 @@ var graphs = require('./graphs');
 /* pub */ function getImmediateDependencies (id, next) {
   return Promise.try(function () {
     return ((config.getPlan(id).build || {}).dependencies || []).map(dependencyRef);
+  })
+  .map(function (ref) {
+    return playbook.normalizeRef(ref);
   })
   .nodeify(next);
 }

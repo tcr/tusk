@@ -28,6 +28,7 @@
     "jade": "^1.9.2",
     "js-yaml": "^3.2.5",
     "json-stable-stringify": "^1.0.0",
+    "lodash": "^3.7.0",
     "mkdirp": "^0.5.0",
     "multiplex": "git+https://github.com/tcr/multiplex.git",
     "ps-tree": "0.0.3",

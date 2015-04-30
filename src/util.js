@@ -1,5 +1,9 @@
 var crypto = require('crypto');
 var Map = require('es6-map');
+var spawn = require('child_process').spawn;
+var concat = require('concat-stream');
+var _ = require('lodash');
+var Promise = require('bluebird');
 
 function sha1 (value) {
   var shasum = crypto.createHash('sha1');
@@ -74,6 +78,47 @@ function disconnect (A, B) {
   B.unpipe && B.unpipe(A);
 }
 
+function getRepositoryRefs (url) {
+  // TODO verify url
+
+  return new Promise(function (resolve, reject) {
+    var p = spawn('git', ['ls-remote', url])
+    p.stdout.pipe(concat(function (data) {
+      var map = _(data)
+        .trim()
+        .toString()
+        .split(/\n/)
+        .map(function (str) {
+          return str.split(/\t/).reverse();
+        })
+        .filter(function (str) {
+          return str[0].match(/^refs\//)
+        })
+        .map(function (str) {
+          return [str[0].replace(/^refs\//, ''), str[1]];
+        });
+
+      resolve(_.zipObject([].concat.apply([], [
+        _(map).filter(function (str) {
+          return str[0].match(/^tags\//) && !str[0].match(/\^\{\}/);
+        }).map(function (str) {
+          return [str[0].replace(/^[^\/]+\//, ''), str[1]];
+        }).value(),
+        _(map).filter(function (str) {
+          return str[0].match(/^pull\//) && str[0].match(/\/head$/);
+        }).map(function (str) {
+          return [str[0].replace(/\/[^\/]+$/g, ''), str[1]];
+        }).value(),
+        _(map).filter(function (str) {
+          return str[0].match(/^heads\//);
+        }).map(function (str) {
+          return [str[0].replace(/^[^\/]+\//, ''), str[1]];
+        }).value(),
+      ])));
+    }))
+  });
+}
+
 exports.connect = connect;
 exports.disconnect = disconnect;
 exports.sha1 = sha1;
@@ -84,3 +129,4 @@ exports.combine = combine;
 exports.refString = refString;
 exports.refSha = refSha;
 exports.memoize = memoize;
+exports.getRepositoryRefs = getRepositoryRefs;
