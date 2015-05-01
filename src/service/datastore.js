@@ -58,6 +58,17 @@ exports.find = function (type) {
   });
 }
 
+exports.destroy = function (type) {
+  var args = [].slice.call(arguments, 1);
+  var base = ({
+    Job: Job
+  })[type];
+  return run
+  .then(function () {
+    return base.destroy.apply(base, args);
+  });
+}
+
 exports.findAll = function (type) {
   var args = [].slice.call(arguments, 1);
   var base = ({

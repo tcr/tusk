@@ -353,6 +353,19 @@ app.get('/job/:id/', enforceSlash, function (req, res) {
   });
 });
 
+
+app.post('/job/:id/delete', function (req, res) {
+  var id = parseInt(req.params.id);
+
+  out.rpc.request('job-delete', {
+    id: id
+  })
+  .then(function (result) {
+    console.log('Delete result', result);
+    res.redirect('/');
+  });
+});
+
 app.get('/job/:id/log', function (req, res) {
   res.writeHead(200, {
     'Content-Type': 'text/html',

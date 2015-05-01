@@ -215,6 +215,14 @@ var rpcSpec = {
     return Promise.resolve('cool');
   },
 
+  'job-delete': function (rpc, job) {
+    return store.destroy('Job', {
+      where: {
+        id: job.id
+      }
+    });
+  },
+
   'job-artifact': function (rpc, id) {
     return store.find('Job', id)
     .then(function (row) {

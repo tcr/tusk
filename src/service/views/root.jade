@@ -93,6 +93,9 @@ block body
                 | [ download ]
             else
               |  with errors.
+          form(action='/job/' + job.id + '/delete', method='post')
+            input(type='hidden', name='method', value='delete')
+            button(type='submit') Remove Job
   
   section#sec-targets
     h2 Targets
