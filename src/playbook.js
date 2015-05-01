@@ -109,132 +109,136 @@ var bucket = 'technical-tusk';
     commit = ref.sha;
   }
 
-  return yaml.dump((skipinit ? [] : [
-    tusk_init,
-    iswindows ? dummy() : setup,
-    iswindows ? dummy() : {
-      "hosts": "all",
-      "gather_facts": false,
-      "vars": util.clone(basevars),
-      "tasks": [].concat.apply([], (openwrt.build.dependencies || []).map(function (k) {
-        var ref = dependencies.dependencyRef(k);
-        var sha = util.refSha(ref);
+  var deps = (openwrt.build.dependencies || []).map(dependencies.dependencyRef);
 
-        console.error('(ref:', ref, ')');
-        return [
-          {
-            "name": "download " + ref.id,
-            "get_url": {
-              "url": 'https://storage.googleapis.com/' + bucket + '/' + sha + '.tar.gz',
-              "dest": '/tmp/' + sha + '.tar.gz'
+  return Promise.map(deps, normalizeRef)
+  .then(function (deps) {
+    return yaml.dump((skipinit ? [] : [
+      tusk_init,
+      iswindows ? dummy() : setup,
+      iswindows ? dummy() : {
+        "hosts": "all",
+        "gather_facts": false,
+        "vars": util.clone(basevars),
+        "tasks": [].concat.apply([], deps.map(function (ref) {
+          var sha = util.refSha(ref);
+
+          console.error('(ref:', ref, ')');
+          return [
+            {
+              "name": "download " + ref.id,
+              "get_url": {
+                "url": 'https://storage.googleapis.com/' + bucket + '/' + sha + '.tar.gz',
+                "dest": '/tmp/' + sha + '.tar.gz'
+              },
             },
+            {
+              "name": "make " + ref.id + " directory",
+              "file": {
+                "path": "/tusk/dependencies/" + ref.id,
+                "state": "directory",
+              },
+            },
+            {
+              "name": "extract " + ref.id,
+              "unarchive": {
+                "src": "/tmp/" + sha + ".tar.gz",
+                "dest": "/tusk/dependencies/" + ref.id,
+                "copy": false,
+              },
+            }
+          ];
+        }))
+      },
+      iswindows ? dummy() : tusk_git,
+      // TODO screen roles
+      {
+        "hosts": "all",
+        "gather_facts": false,
+        "vars": util.clone(basevars),
+        "sudo": true,
+        "roles": openwrt['build'].roles || [],
+      },
+      {
+        "hosts": "all",
+        "vars": util.clone(basevars),
+        "tasks": openwrt['build'].setup || [],
+      },
+      skipsnapshot ? dummy() : {
+        "hosts": "all",
+        "gather_facts": false,
+        "tasks": [
+          {
+            "name": "delete stale snapshot",
+            "run": {
+              "cmd": "gcloud compute snapshots delete tusk-snap-" + snaphash + " -q || true",
+            }
           },
           {
-            "name": "make " + ref.id + " directory",
-            "file": {
-              "path": "/tusk/dependencies/" + ref.id,
-              "state": "directory",
-            },
+            "name": "sync disk",
+            "sudo": true,
+            "run": {
+              "cmd": "sync",
+            }
           },
           {
-            "name": "extract " + ref.id,
-            "unarchive": {
-              "src": "/tmp/" + sha + ".tar.gz",
-              "dest": "/tusk/dependencies/" + ref.id,
-              "copy": false,
+            "name": "create snapshot",
+            "run": {
+              "cmd": 'gcloud compute disks snapshot tusk-' + sha + " --snapshot-name tusk-snap-" + snaphash + " --zone " + zone,
             },
           }
-        ];
-      }))
-    },
-    iswindows ? dummy() : tusk_git,
-    // TODO screen roles
-    {
-      "hosts": "all",
-      "gather_facts": false,
-      "vars": util.clone(basevars),
-      "sudo": true,
-      "roles": openwrt['build'].roles || [],
-    },
-    {
-      "hosts": "all",
-      "vars": util.clone(basevars),
-      "tasks": openwrt['build'].setup || [],
-    },
-    skipsnapshot ? dummy() : {
-      "hosts": "all",
-      "gather_facts": false,
-      "tasks": [
-        {
-          "name": "delete stale snapshot",
-          "run": {
-            "cmd": "gcloud compute snapshots delete tusk-snap-" + snaphash + " -q || true",
+        ],
+      },
+    ]).concat([
+      iswindows ? dummy() : {
+        "hosts": "all",
+        "gather_facts": false,
+        "vars": util.clone(basevars),
+        "tasks": openwrt.build.source ? [
+          {
+            "name": "require git",
+            "apt": "name=git",
+            "sudo": true,
+          },
+          {
+            "name": "download " + source + '#' + commit,
+            "git": {
+              "repo": source,
+              "dest": "/tusk/source",
+              "recursive": false,
+              version: commit,
+            },
+          }, {
+            "name": "download " + source + '#' + commit,
+            "git": {
+              "repo": source,
+              "dest": "/tusk/source",
+              "recursive": true,
+              version: commit,
+            },
           }
-        },
-        {
-          "name": "sync disk",
-          "sudo": true,
-          "run": {
-            "cmd": "sync",
-          }
-        },
-        {
-          "name": "create snapshot",
-          "run": {
-            "cmd": 'gcloud compute disks snapshot tusk-' + sha + " --snapshot-name tusk-snap-" + snaphash + " --zone " + zone,
-          },
-        }
-      ],
-    },
-  ]).concat([
-    iswindows ? dummy() : {
-      "hosts": "all",
-      "gather_facts": false,
-      "vars": util.clone(basevars),
-      "tasks": openwrt.build.source ? [
-        {
-          "name": "require git",
-          "apt": "name=git",
-          "sudo": true,
-        },
-        {
-          "name": "download " + source + '#' + commit,
-          "git": {
-            "repo": source,
-            "dest": "/tusk/source",
-            "recursive": false,
-            version: commit,
-          },
-        }, {
-          "name": "download " + source + '#' + commit,
-          "git": {
-            "repo": source,
-            "dest": "/tusk/source",
-            "recursive": true,
-            version: commit,
-          },
-        }
-      ] : []
-    },
-    {
-      "hosts": "all",
-      "vars": util.clone(basevars),
-      "tasks": openwrt['build'].tasks || [],
-    },
-    {
-      "hosts": "all",
-      "sudo": !iswindows,
-      "vars": util.combine(util.combine(basevars, {
-        "sha": sha
-      }), {
-        gs_access_key: config.read().gstorage.key,
-        gs_secret_key: config.read().gstorage.secret,
-      }),
-      "tasks": upload,
-    },
-  ]).filter(function (group) {
-    return (group.tasks && group.tasks.length) || (group.roles && group.roles.length);
-  }))
+        ] : []
+      },
+      {
+        "hosts": "all",
+        "vars": util.clone(basevars),
+        "tasks": openwrt['build'].tasks || [],
+      },
+      {
+        "hosts": "all",
+        "sudo": !iswindows,
+        "vars": util.combine(util.combine(basevars, {
+          "sha": sha
+        }), {
+          gs_access_key: config.read().gstorage.key,
+          gs_secret_key: config.read().gstorage.secret,
+        }),
+        "tasks": upload,
+      },
+    ]).filter(function (group) {
+      return (group.tasks && group.tasks.length) || (group.roles && group.roles.length);
+    }))
+  });
 }
 
 exports.normalizeRef = normalizeRef;

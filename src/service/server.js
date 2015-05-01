@@ -91,7 +91,7 @@ function addjob (ref, merge, force) {
 function jobhandle (id) {
   return store.find('Job', id)
   .then(function (row) {
-    console.log('Consuming job #' + id, row);
+    console.log('Consuming job #' + id, row.get());
 
     var sha = util.refSha(row.ref);
     var record = new Record(sha);
@@ -141,7 +141,7 @@ function jobhandle (id) {
           addjob(dep, null)
           .then(function (job) {
             row.dependencies.push(job.id);
-            return jobhandle(id);
+            return jobhandle(job.id);
           })
         })
       })

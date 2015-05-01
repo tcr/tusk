@@ -33,6 +33,10 @@ var playbook = require('./playbook');
   .map(function (ref) {
     return playbook.normalizeRef(ref);
   })
+  .map(function (ref) {
+    console.log('MAPPED', ref);
+    return ref;
+  })
   .nodeify(next);
 }
 
